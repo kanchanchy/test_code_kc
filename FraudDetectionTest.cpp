@@ -927,7 +927,7 @@ void FraudDetectionTest::testingFraudDetection2(int numDataSplits, int dataBatch
  
      core::PlanNodeId p0;
 
-     ##.planNode(), {"row_id", "x", "tree_id", "tree"}
+     //.planNode(), {"row_id", "x", "tree_id", "tree"}
 
      // Build the inner query plan
      /*auto innerPlan = exec::test::PlanBuilder(pool_.get())
