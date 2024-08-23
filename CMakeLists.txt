@@ -177,7 +177,7 @@ target_link_libraries(
 
 add_executable(fraud_detection_test tests/FraudDetectionTest.cpp)
 target_link_libraries(
-  decision_forest_prediction_test
+  fraud_detection_test
   velox_aggregates
   velox_type
   velox_vector
