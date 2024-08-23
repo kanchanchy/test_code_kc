@@ -379,85 +379,6 @@ void FraudDetectionTest::testingForestPredictLarge(int numDataSplits, int dataBa
 
 
 
-
-void FraudDetectionTest::testingFraudPredictCrossproduct(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath1, std::string dataFilePath2, std::string modelFilePath1, std::string modelFilePath2) {
-
-  registerFunctions(modelFilePath1, numCols);
-  registerFunctions(modelFilePath2);
-   
-     //int numRows = 10;
-     //int numRows = 56962;
-     //int numCols = 28;
-     
-     //std::string dataFilePath = "resources/data/creditcard_test.csv";
-     //std::string dataFilePath = "/data/decision-forest-benchmark-paper/datasets/test10.csv";
-
-     auto dataFile = TempFilePath::create();                                                                      
-                      
-     std::string path = dataFile->path;
-
-     RowVectorPtr inputRowVector = writeDataToFile(dataFilePath, numRows, numCols, numDataSplits, path, dataBatchSize);
-
-     auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
-
-     auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
- 
-     core::PlanNodeId p0;
-
-     auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                     .tableScan(asRowType(inputRowVector->type()))
-                     .capturePlanNodeId(p0)
-                     .project({"decision_forest_predict(x)"})
-                     .planFragment();
-
-     // print statistics of a plan
-     queryCtx_->testingOverrideConfigUnsafe(
-         {{core::QueryConfig::kPreferredOutputBatchBytes, "1000000"}, 
-         {core::QueryConfig::kMaxOutputBatchRows, "100000"}});
-   
-     auto task = exec::Task::create("0", myPlan , 0, queryCtx_,
-           [](RowVectorPtr result, ContinueFuture* /*unused*/) {
-           if(result) {
-                 //std::cout << result->toString() << std::endl;
-                 //std::cout << result->toString(0, result->size()) << std::endl;
-           }      
-           return exec::BlockingReason::kNotBlocked;
-    });
-   
-    std::cout << "Data Hive splits:" << std::endl;
-    for(auto& split : dataHiveSplits) {
-         std::cout << split->toString() << std::endl;
-         task->addSplit(p0, exec::Split(std::move(split)));
-    }
-   
- 
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
- 
-    int veloxThreads = 8;
-
-    task->start(veloxThreads);
-     
- 
-    task->noMoreSplits(p0);
-   
- 
-    // Start task with 2 as maximum drivers and wait for execution to finish
-    waitForFinishedDrivers(task);
-   
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-   
-    std::stringstream ss;
-
-    ss << numRows << "," << numDataSplits << "," << veloxThreads << ",";
-   
-    std::cout << "Time for Decision Forest Prediction with Input Data (sec): " << std::endl;
-
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
- 
-    std::cout << ss.str() << std::endl;
-  
-}
-
 ArrayVectorPtr FraudDetectionTest::parseCSVFile(VectorMaker & maker, std::string filePath, int numRows, int numCols) {
 
     int size = numRows * numCols;
@@ -845,7 +766,8 @@ void FraudDetectionTest::testingFraudDetection(int numDataSplits, int dataBatchS
 
      // Build the outer query plan with filters and final projection
      auto outerPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                         .values({innerPlan})
+                         //.values({innerPlan})
+                         .subquery(innerPlan)
                          .capturePlanNodeId(p0)
                          .filter("velox_decision_tree_predict(features) > 0.5")
                          .filter("xgboost_predict_small(features) > 0.5")
