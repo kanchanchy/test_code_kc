@@ -769,7 +769,7 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
                          .filter("customer_id = trans_customer_id")
                          .project({"transaction_id AS tid", 
                                    "transaction_features AS features"})
-                         .filter("velox_decision_tree_predict(features) > 0.5")
+                         //.filter("velox_decision_tree_predict(features) > 0.5")
                          .project({"tid", "xgboost_predict(features)"})
                          .planFragment();
 
