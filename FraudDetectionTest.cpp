@@ -58,15 +58,15 @@ using namespace facebook::velox::exec::test;
 using namespace facebook::velox::core;
 
 
-class ConcatFloatVectorsFunction : public exec::VectorFunction {
+/*class ConcatFloatVectorsFunction : public exec::VectorFunction {
 public:
   // Apply method to concatenate input vectors
   void apply(
-      const SelectivityVector& rows,
-      std::vector<VectorPtr>& args,
-      const TypePtr& outputType,
-      exec::EvalCtx* context,
-      VectorPtr* result) const override {
+    const SelectivityVector& rows,
+    std::vector<VectorPtr>& args,
+    const TypePtr& outputType,
+    exec::EvalCtx* context,
+    VectorPtr* result) const override {
     
     // Cast inputs to FlatVector<float>
     auto vec1 = args[0]->as<FlatVector<float>>();
@@ -74,6 +74,8 @@ public:
 
     // Prepare the output vector
     auto flatResult = BaseVector::create<FlatVector<float>>(outputType, rows.size(), context->pool());
+    //auto flatResult = makeFlatVector<float>(context->pool(), concatenatedVec.size(), concatenatedVec);
+
 
     // Concatenate vectors for each row
     for (auto row = rows.begin(); row != rows.end(); ++row) {
@@ -103,7 +105,7 @@ public:
                 .argumentType("ARRAY<FLOAT>")
                 .build()};
   }
-};
+};*/
 
 
 
@@ -221,24 +223,14 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
       TreePrediction::signatures(),
       std::make_unique<ForestPrediction>(modelFilePath, numCols, true));
 
-  exec::registerVectorFunction(
+  /*exec::registerVectorFunction(
       "feature_extract",
       ConcatFloatVectorsFunction::signatures(),
-      std::make_unique<ConcatFloatVectorsFunction>());
+      std::make_unique<ConcatFloatVectorsFunction>());*/
 
 
 }
 
-void FraudDetectionTest::registerFunctions(std::string forestPath) {
-
-  std::cout <<"To register function for XGBoostPrediction" << std::endl;
-
-  exec::registerVectorFunction(
-      "xgboost_predict",
-      XGBoostPrediction::signatures(),
-      std::make_unique<XGBoostPrediction>(forestPath.c_str(), 28));
-
-}
 
 void FraudDetectionTest::testingTreePredictSmall() {
 
@@ -775,8 +767,8 @@ void FraudDetectionTest::testingFraudDetection(int numDataSplits, int dataBatchS
 
      int numCustomers = 500;
      int numTransactions = 5000;
-     int numCustomerFeatures = 10
-     int numTransactionFeatures = 18
+     int numCustomerFeatures = 10;
+     int numTransactionFeatures = 28;
      
      // Customer table
      std::vector<int64_t> customerIDs;
@@ -846,7 +838,7 @@ void FraudDetectionTest::testingFraudDetection(int numDataSplits, int dataBatchS
                          .filer("customer_id > 200")
                          .filter("customer_id = trans_customer_id")  // Join on customer_id
                          .project({"transaction_id AS tid", 
-                                   "feature_extract(customer_features, transaction_features) AS features"})
+                                   "transaction_features AS features"})
                          .planNode();
 
      // Build the outer query plan with filters and final projection
