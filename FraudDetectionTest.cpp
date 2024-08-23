@@ -47,6 +47,7 @@
 #include "velox/ml_functions/VeloxDecisionTree.h"
 #include "velox/expression/VectorFunction.h"
 #include "velox/vector/ComplexVector.h"
+#include "velox/vector/FlatVector.h"
 
 using namespace std;
 using namespace ml;
@@ -57,9 +58,9 @@ using namespace facebook::velox::exec::test;
 using namespace facebook::velox::core;
 
 
-class FeatureExtractFunction : public exec::VectorFunction {
- public:
-  // The main method that will be called to apply the function to input vectors.
+class ConcatFloatVectorsFunction : public exec::VectorFunction {
+public:
+  // Apply method to concatenate input vectors
   void apply(
       const SelectivityVector& rows,
       std::vector<VectorPtr>& args,
@@ -67,54 +68,39 @@ class FeatureExtractFunction : public exec::VectorFunction {
       exec::EvalCtx* context,
       VectorPtr* result) const override {
     
-    // Ensure input vectors are correctly cast to their appropriate types
-    auto customerFeaturesArray = args[0]->as<ArrayVector>();
-    auto transactionFeaturesArray = args[1]->as<ArrayVector>();
+    // Cast inputs to FlatVector<float>
+    auto vec1 = args[0]->as<FlatVector<float>>();
+    auto vec2 = args[1]->as<FlatVector<float>>();
 
-    // Ensure the result vector is allocated
-    auto flatResult = (*result)->asFlatVector<std::shared_ptr<RowVector>>();
-    if (!flatResult) {
-      flatResult = BaseVector::create<FlatVector<std::shared_ptr<RowVector>>>(
-          outputType, rows.size(), context->pool());
-      *result = flatResult;
-    }
+    // Prepare the output vector
+    auto flatResult = BaseVector::create<FlatVector<float>>(outputType, rows.size(), context->pool());
 
-    // Loop over each row in the SelectivityVector
+    // Concatenate vectors for each row
     for (auto row = rows.begin(); row != rows.end(); ++row) {
-      // Extract the customer and transaction features for the current row
-      auto customerFeatures = customerFeaturesArray->elements()->as<FlatVector<float>>();
-      auto transactionFeatures = transactionFeaturesArray->elements()->as<FlatVector<float>>();
+      std::vector<float> concatenatedVec;
+      concatenatedVec.reserve(vec1->size() + vec2->size());
 
-      // Concatenate features
-      std::vector<float> concatenatedFeatures;
-      concatenatedFeatures.reserve(customerFeatures->size() + transactionFeatures->size());
-
-      for (int i = 0; i < customerFeatures->size(); ++i) {
-        concatenatedFeatures.push_back(customerFeatures->valueAt(i));
+      // Concatenate values from both vectors
+      for (int i = 0; i < vec1->size(); ++i) {
+        concatenatedVec.push_back(vec1->valueAt(i));
       }
-      for (int i = 0; i < transactionFeatures->size(); ++i) {
-        concatenatedFeatures.push_back(transactionFeatures->valueAt(i));
+      for (int i = 0; i < vec2->size(); ++i) {
+        concatenatedVec.push_back(vec2->valueAt(i));
       }
 
-      // Create a new RowVector for the concatenated features
-      auto concatenatedVector = std::make_shared<RowVector>(
-          customerFeaturesArray->pool(),
-          customerFeaturesArray->type(),
-          nullptr,
-          concatenatedFeatures.size(),
-          std::vector<VectorPtr>{makeFlatVector<float>(concatenatedFeatures)});
-
-      // Set the result in the output vector
-      flatResult->set(row, concatenatedVector);
+      // Set the concatenated result in the output vector
+      flatResult->set(row, makeFlatVector<float>(concatenatedVec));
     }
+
+    *result = flatResult;
   }
 
+  // Define the function signatures
   static std::vector<exec::FunctionSignaturePtr> signatures() {
-    // Define the function signature (e.g., takes two arrays of floats and returns an array of floats)
     return {exec::FunctionSignatureBuilder()
-                .returnType("ROW<ARRAY<FLOAT>>")
-                .argumentType("ROW<ARRAY<FLOAT>>")
-                .argumentType("ROW<ARRAY<FLOAT>>")
+                .returnType("ARRAY<FLOAT>")
+                .argumentType("ARRAY<FLOAT>")
+                .argumentType("ARRAY<FLOAT>")
                 .build()};
   }
 };
@@ -234,11 +220,11 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
       "xgboost_predict",
       TreePrediction::signatures(),
       std::make_unique<ForestPrediction>(modelFilePath, numCols, true));
-  
+
   exec::registerVectorFunction(
       "feature_extract",
-      FeatureExtractFunction::signatures(),
-      std::make_unique<FeatureExtractFunction>());
+      ConcatFloatVectorsFunction::signatures(),
+      std::make_unique<ConcatFloatVectorsFunction>());
 
 
 }
