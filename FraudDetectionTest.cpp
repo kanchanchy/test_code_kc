@@ -756,26 +756,6 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
      core::PlanNodeId p0;
      core::PlanNodeId p1;
 
-     //.planNode(), {"row_id", "x", "tree_id", "tree"}
-
-     // Build the inner query plan
-     /*auto innerPlan = exec::test::PlanBuilder(pool_.get())
-                         .values(inputVectors)
-                         .filter("customer_id > 200")
-                         .filter("customer_id = trans_customer_id")  // Join on customer_id
-                         .project({"transaction_id AS tid", 
-                                   "transaction_features AS features"})
-                         .planNode();
-
-     // Build the outer query plan with filters and final projection
-     auto outerPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                         //.values({innerPlan})
-                         .subquery(innerPlan)
-                         .capturePlanNodeId(p0)
-                         .filter("velox_decision_tree_predict(features) > 0.5")
-                         .filter("xgboost_predict_small(features) > 0.5")
-                         .project({"tid", "xgboost_predict(features)"})
-                         .planFragment();*/
      
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({transactionRowVector})
@@ -784,14 +764,12 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
                          .values({customerRowVector})
                          .capturePlanNodeId(p0)
                          .filter("customer_id > 200")
-                         //.project({"customer_id"})
-                         .planNode(), {"transaction_id", "transaction_features", "customer_id", "customer_features"}
+                         .planNode(), {"transaction_id", "trans_customer_id", "transaction_features", "customer_id", "customer_features"}
                          )
                          .filter("customer_id = trans_customer_id")
                          .project({"transaction_id AS tid", 
                                    "transaction_features AS features"})
                          .filter("velox_decision_tree_predict(features) > 0.5")
-                         //.filter("xgboost_predict_small(features) > 0.5")
                          .project({"tid", "xgboost_predict(features)"})
                          .planFragment();
 
