@@ -183,7 +183,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
 
 void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCols) {
 
-  string forestPath = "resources/model/fraud_xgboost_10_8.json";
+  //string forestPath = "resources/model/fraud_xgboost_10_8.json";
 
   std::cout <<"To register function for TreePrediction" << std::endl;
 
@@ -212,12 +212,12 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
        VeloxTreeConstruction::signatures(),
        std::make_unique<VeloxTreeConstruction>());
   
-  std::cout <<"To register function for XGBoostPredictionSamll" << std::endl;
+  /*std::cout <<"To register function for XGBoostPredictionSamll" << std::endl;
 
   exec::registerVectorFunction(
       "xgboost_predict_small",
       XGBoostPrediction::signatures(),
-      std::make_unique<XGBoostPrediction>(forestPath.c_str(), 28));
+      std::make_unique<XGBoostPrediction>(forestPath.c_str(), 28));*/
 
   std::cout << "To register function for ForestPrediction" << std::endl;
 
@@ -230,7 +230,6 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
       "feature_extract",
       ConcatFloatVectorsFunction::signatures(),
       std::make_unique<ConcatFloatVectorsFunction>());*/
-
 
 }
 
@@ -792,7 +791,7 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
                          .project({"transaction_id AS tid", 
                                    "transaction_features AS features"})
                          .filter("velox_decision_tree_predict(features) > 0.5")
-                         .filter("xgboost_predict_small(features) > 0.5")
+                         //.filter("xgboost_predict_small(features) > 0.5")
                          .project({"tid", "xgboost_predict(features)"})
                          .planFragment();
 
