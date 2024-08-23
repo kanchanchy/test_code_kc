@@ -783,7 +783,7 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
                          .mergeJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({customerRowVector})
                          .filter("customer_id > 200")
-                         .project({customer_id})
+                         .project({"customer_id"})
                          )
                          .filter("customer_id = trans_customer_id")
                          .project({"transaction_id AS tid", 
@@ -953,7 +953,7 @@ void FraudDetectionTest::testingFraudDetection2(int numDataSplits, int dataBatch
                          .capturePlanNodeId(p0)
                          .mergeJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({customerRowVector})
-                         .project({customer_id})
+                         .project({"customer_id"})
                          )
                          .filter("customer_id = trans_customer_id")
                          .filter("customer_id > 200")
