@@ -755,8 +755,9 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
  
      core::PlanNodeId p0;
+     core::PlanNodeId p1;
 
-     ##.planNode(), {"row_id", "x", "tree_id", "tree"}
+     //.planNode(), {"row_id", "x", "tree_id", "tree"}
 
      // Build the inner query plan
      /*auto innerPlan = exec::test::PlanBuilder(pool_.get())
@@ -779,11 +780,13 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
      
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({transactionRowVector})
-                         .capturePlanNodeId(p0)
+                         .capturePlanNodeId(p1)
                          .mergeJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({customerRowVector})
+                         .capturePlanNodeId(p0)
                          .filter("customer_id > 200")
                          .project({"customer_id"})
+                         .planNode()
                          )
                          .filter("customer_id = trans_customer_id")
                          .project({"transaction_id AS tid", 
@@ -926,6 +929,7 @@ void FraudDetectionTest::testingFraudDetection2(int numDataSplits, int dataBatch
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
  
      core::PlanNodeId p0;
+     core::PlanNodeId p1;
 
      //.planNode(), {"row_id", "x", "tree_id", "tree"}
 
@@ -950,10 +954,12 @@ void FraudDetectionTest::testingFraudDetection2(int numDataSplits, int dataBatch
      
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({transactionRowVector})
-                         .capturePlanNodeId(p0)
+                         .capturePlanNodeId(p1)
                          .mergeJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({customerRowVector})
+                         .capturePlanNodeId(p0)
                          .project({"customer_id"})
+                         .planNode()
                          )
                          .filter("customer_id = trans_customer_id")
                          .filter("customer_id > 200")
