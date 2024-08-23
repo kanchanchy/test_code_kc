@@ -141,7 +141,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   void testingForestPredictSmall();
   void testingForestPredictLarge(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingFraudDetection1(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
-  void testingFraudDetection2(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
+  //void testingFraudDetection2(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingForestPredictCrossproductSmall();
   void testingForestPredictCrossproductLarge( bool whetherToReorderJoin, int numDataSplits, int numTreeSplits, 
                                               uint32_t numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath );
@@ -784,16 +784,16 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
                          .nestedLoopJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({customerRowVector})
                          .capturePlanNodeId(p0)
-                         .filter("customer_id > 200")
-                         .project({"customer_id"})
-                         .planNode()
+                         //.filter("customer_id > 200")
+                         //.project({"customer_id"})
+                         .planNode(), {"transaction_id", "transaction_features", "customer_id", "customer_features"}
                          )
-                         .filter("customer_id = trans_customer_id")
-                         .project({"transaction_id AS tid", 
-                                   "transaction_features AS features"})
-                         .filter("velox_decision_tree_predict(features) > 0.5")
-                         .filter("xgboost_predict_small(features) > 0.5")
-                         .project({"tid", "xgboost_predict(features)"})
+                         //.filter("customer_id = trans_customer_id")
+                         //.project({"transaction_id AS tid", 
+                         //          "transaction_features AS features"})
+                         //.filter("velox_decision_tree_predict(features) > 0.5")
+                         //.filter("xgboost_predict_small(features) > 0.5")
+                         //.project({"tid", "xgboost_predict(features)"})
                          .planFragment();
 
 
@@ -805,8 +805,8 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
      auto task = exec::Task::create("0", myPlan , 0, queryCtx_,
            [](RowVectorPtr result, ContinueFuture* /*unused*/) {
            if(result) {
-                 //std::cout << result->toString() << std::endl;
-                 //std::cout << result->toString(0, result->size()) << std::endl;
+                 std::cout << result->toString() << std::endl;
+                 std::cout << result->toString(0, result->size()) << std::endl;
            }      
            return exec::BlockingReason::kNotBlocked;
     });
@@ -846,7 +846,7 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
 }
 
 
-void FraudDetectionTest::testingFraudDetection2(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
+/*void FraudDetectionTest::testingFraudDetection2(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
 
      registerFunctions(modelFilePath, numCols);
    
@@ -933,24 +933,7 @@ void FraudDetectionTest::testingFraudDetection2(int numDataSplits, int dataBatch
 
      //.planNode(), {"row_id", "x", "tree_id", "tree"}
 
-     // Build the inner query plan
-     /*auto innerPlan = exec::test::PlanBuilder(pool_.get())
-                         .values(inputVectors)
-                         .filter("customer_id > 200")
-                         .filter("customer_id = trans_customer_id")  // Join on customer_id
-                         .project({"transaction_id AS tid", 
-                                   "transaction_features AS features"})
-                         .planNode();
-
-     // Build the outer query plan with filters and final projection
-     auto outerPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                         //.values({innerPlan})
-                         .subquery(innerPlan)
-                         .capturePlanNodeId(p0)
-                         .filter("velox_decision_tree_predict(features) > 0.5")
-                         .filter("xgboost_predict_small(features) > 0.5")
-                         .project({"tid", "xgboost_predict(features)"})
-                         .planFragment();*/
+     // Build the inner query pla
      
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({transactionRowVector})
@@ -1017,7 +1000,7 @@ void FraudDetectionTest::testingFraudDetection2(int numDataSplits, int dataBatch
  
     std::cout << ss.str() << std::endl;
  
-}
+}*/
 
 
 void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
@@ -1031,7 +1014,7 @@ void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, i
   else if (option == 2)
       {
             testingFraudDetection1(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
-            testingFraudDetection2(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+            //testingFraudDetection2(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
       }
 
   else
