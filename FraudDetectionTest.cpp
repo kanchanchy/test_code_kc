@@ -831,6 +831,8 @@ void FraudDetectionTest::testingFraudDetection(int numDataSplits, int dataBatchS
          {"transaction_id", "trans_customer_id", "transaction_features"},
          {transactionIDVector, transactionCustomerIDVector, transactionFeaturesVector}
      );
+
+     std::vector<RowVectorPtr> inputVectors = {customerRowVector, transactionRowVector};
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
@@ -840,7 +842,7 @@ void FraudDetectionTest::testingFraudDetection(int numDataSplits, int dataBatchS
 
      // Build the inner query plan
      auto innerPlan = exec::test::PlanBuilder(pool_.get())
-                         .values({customerRowVector, transactionRowVector})
+                         .values(inputVectors)
                          .filer("customer_id > 200")
                          .filter("customer_id = trans_customer_id")  // Join on customer_id
                          .project({"transaction_id AS tid", 
@@ -862,7 +864,7 @@ void FraudDetectionTest::testingFraudDetection(int numDataSplits, int dataBatchS
          {{core::QueryConfig::kPreferredOutputBatchBytes, "1000000"}, 
          {core::QueryConfig::kMaxOutputBatchRows, "100000"}});
    
-     auto task = exec::Task::create("0", myPlan , 0, queryCtx_,
+     auto task = exec::Task::create("0", outerPlan , 0, queryCtx_,
            [](RowVectorPtr result, ContinueFuture* /*unused*/) {
            if(result) {
                  //std::cout << result->toString() << std::endl;
