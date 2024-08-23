@@ -182,6 +182,8 @@ class FraudDetectionTest : public HiveConnectorTestBase {
 
 void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCols) {
 
+  string forestPath = "resources/model/fraud_xgboost_10_8.json";
+
   std::cout <<"To register function for TreePrediction" << std::endl;
 
   exec::registerVectorFunction(
@@ -214,7 +216,7 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
   exec::registerVectorFunction(
       "xgboost_predict_small",
       XGBoostPrediction::signatures(),
-      std::make_unique<XGBoostPrediction>("resources/model/fraud_xgboost_10_8.json".c_str(), 28));
+      std::make_unique<XGBoostPrediction>(forestPath.c_str(), 28));
 
   std::cout << "To register function for ForestPrediction" << std::endl;
 
@@ -835,7 +837,7 @@ void FraudDetectionTest::testingFraudDetection(int numDataSplits, int dataBatchS
      // Build the inner query plan
      auto innerPlan = exec::test::PlanBuilder(pool_.get())
                          .values(inputVectors)
-                         .filer("customer_id > 200")
+                         .filter("customer_id > 200")
                          .filter("customer_id = trans_customer_id")  // Join on customer_id
                          .project({"transaction_id AS tid", 
                                    "transaction_features AS features"})
