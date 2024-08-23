@@ -1023,9 +1023,10 @@ void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, i
       testingForestPredictCrossproductLarge(true, numDataSplits, numTreeSplits, numTreeRows, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
 
   else if (option == 2)
-
-      testingFraudDetection1(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
-      testingFraudDetection2(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      {
+            testingFraudDetection1(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+            testingFraudDetection2(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      }
 
   else
 
