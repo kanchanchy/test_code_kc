@@ -771,16 +771,17 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
                                    "transaction_features AS features"})
                          //.filter("velox_decision_tree_predict(features) > 0.5")
                          .project({"tid", "xgboost_predict(features)"})
-                         .planFragment();
+                         .planNode();
 
 
      // print statistics of a plan
+     /*
      queryCtx_->testingOverrideConfigUnsafe(
          {{core::QueryConfig::kPreferredOutputBatchBytes, "1000000"}, 
          {core::QueryConfig::kMaxOutputBatchRows, "100000"}});
    
      auto task = exec::Task::create("0", myPlan , 0, queryCtx_,
-           [](RowVectorPtr result, ContinueFuture* /*unused*/) {
+           [](RowVectorPtr result, ContinueFuture*) {
            if(result) {
                  //std::cout << result->toString() << std::endl;
                  //std::cout << result->toString(0, result->size()) << std::endl;
@@ -792,12 +793,12 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
     for(auto& split : dataHiveSplits) {
          std::cout << split->toString() << std::endl;
          task->addSplit(p0, exec::Split(std::move(split)));
-    }
+    }*/
    
  
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
  
-    int veloxThreads = 8;
+    /*int veloxThreads = 8;
 
     task->start(veloxThreads);
      
@@ -808,17 +809,20 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
     // Start task with 2 as maximum drivers and wait for execution to finish
     waitForFinishedDrivers(task);
    
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-   
     std::stringstream ss;
 
     ss << numRows << "," << numDataSplits << "," << veloxThreads << ",";
+    //std::cout << ss.str() << std::endl; */
+
+    auto results = exec::test::AssertQueryBuilder(myPlan).copyResults(pool_.get());
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+    std::cout << "Results:" << results->toString() << std::endl;
+    std::cout << results->toString(0, results->size()) << std::endl;
    
     std::cout << "Time for Fraudulent Transaction Detection with First Plan (sec): " << std::endl;
 
     std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
- 
-    std::cout << ss.str() << std::endl;
  
 }
 
