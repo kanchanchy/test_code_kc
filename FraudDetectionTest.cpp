@@ -140,7 +140,8 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   void testingTreePredictSmall();
   void testingForestPredictSmall();
   void testingForestPredictLarge(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
-  void testingFraudDetection(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
+  void testingFraudDetection1(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
+  void testingFraudDetection2(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingForestPredictCrossproductSmall();
   void testingForestPredictCrossproductLarge( bool whetherToReorderJoin, int numDataSplits, int numTreeSplits, 
                                               uint32_t numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath );
@@ -671,7 +672,7 @@ void FraudDetectionTest::testingForestPredictCrossproductLarge(bool whetherToReo
 }
 
 
-void FraudDetectionTest::testingFraudDetection(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
+void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
 
      registerFunctions(modelFilePath, numCols);
    
@@ -688,8 +689,8 @@ void FraudDetectionTest::testingFraudDetection(int numDataSplits, int dataBatchS
 
      //RowVectorPtr inputRowVector = writeDataToFile(dataFilePath, numRows, numCols, numDataSplits, path, dataBatchSize);
 
-     int numCustomers = 500;
-     int numTransactions = 5000;
+     int numCustomers = 1000;
+     int numTransactions = 20000;
      int numCustomerFeatures = 10;
      int numTransactionFeatures = 28;
      
@@ -755,8 +756,10 @@ void FraudDetectionTest::testingFraudDetection(int numDataSplits, int dataBatchS
  
      core::PlanNodeId p0;
 
+     ##.planNode(), {"row_id", "x", "tree_id", "tree"}
+
      // Build the inner query plan
-     auto innerPlan = exec::test::PlanBuilder(pool_.get())
+     /*auto innerPlan = exec::test::PlanBuilder(pool_.get())
                          .values(inputVectors)
                          .filter("customer_id > 200")
                          .filter("customer_id = trans_customer_id")  // Join on customer_id
@@ -772,6 +775,22 @@ void FraudDetectionTest::testingFraudDetection(int numDataSplits, int dataBatchS
                          .filter("velox_decision_tree_predict(features) > 0.5")
                          .filter("xgboost_predict_small(features) > 0.5")
                          .project({"tid", "xgboost_predict(features)"})
+                         .planFragment();*/
+     
+     auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({transactionRowVector})
+                         .capturePlanNodeId(p0)
+                         .mergeJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({customerRowVector})
+                         .filter("customer_id > 200")
+                         .project({customer_id})
+                         )
+                         .filter("customer_id = trans_customer_id")
+                         .project({"transaction_id AS tid", 
+                                   "transaction_features AS features"})
+                         .filter("velox_decision_tree_predict(features) > 0.5")
+                         .filter("xgboost_predict_small(features) > 0.5")
+                         .project({"tid", "xgboost_predict(features)"})
                          .planFragment();
 
 
@@ -780,7 +799,7 @@ void FraudDetectionTest::testingFraudDetection(int numDataSplits, int dataBatchS
          {{core::QueryConfig::kPreferredOutputBatchBytes, "1000000"}, 
          {core::QueryConfig::kMaxOutputBatchRows, "100000"}});
    
-     auto task = exec::Task::create("0", outerPlan , 0, queryCtx_,
+     auto task = exec::Task::create("0", myPlan , 0, queryCtx_,
            [](RowVectorPtr result, ContinueFuture* /*unused*/) {
            if(result) {
                  //std::cout << result->toString() << std::endl;
@@ -815,7 +834,178 @@ void FraudDetectionTest::testingFraudDetection(int numDataSplits, int dataBatchS
 
     ss << numRows << "," << numDataSplits << "," << veloxThreads << ",";
    
-    std::cout << "Time for Fraudulent Transaction Detection with Input Data (sec): " << std::endl;
+    std::cout << "Time for Fraudulent Transaction Detection with First Plan (sec): " << std::endl;
+
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
+ 
+    std::cout << ss.str() << std::endl;
+ 
+}
+
+
+void FraudDetectionTest::testingFraudDetection2(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
+
+     registerFunctions(modelFilePath, numCols);
+   
+     //int numRows = 10;
+     //int numRows = 56962;
+     //int numCols = 28;
+     
+     //std::string dataFilePath = "resources/data/creditcard_test.csv";
+     //std::string dataFilePath = "/data/decision-forest-benchmark-paper/datasets/test10.csv";
+
+     auto dataFile = TempFilePath::create();                                                                      
+                      
+     std::string path = dataFile->path;
+
+     //RowVectorPtr inputRowVector = writeDataToFile(dataFilePath, numRows, numCols, numDataSplits, path, dataBatchSize);
+
+     int numCustomers = 1000;
+     int numTransactions = 20000;
+     int numCustomerFeatures = 10;
+     int numTransactionFeatures = 28;
+     
+     // Customer table
+     std::vector<int64_t> customerIDs;
+     std::vector<std::vector<float>> customerFeatures;
+     
+     // Populate Customer table
+     for (int i = 0; i < numCustomers; ++i) {
+         customerIDs.push_back(i);  // Example: Customer IDs from 0 to 499
+
+         std::vector<float> features;
+         for(int j=0; j < numCustomerFeatures; j++){
+             features.push_back(2.0);
+         }
+         
+         customerFeatures.push_back(features);
+     }
+     
+     // Transaction table
+     std::vector<int64_t> transactionIDs;
+     std::vector<int64_t> transactionCustomerIDs;
+     std::vector<std::vector<float>> transactionFeatures;
+     
+     // Populate Transaction table
+     for (int i = 0; i < numTransactions; ++i) {
+         transactionIDs.push_back(i);  // Example: Transaction IDs from 0 to 4999
+         
+         // Randomly assign each transaction to a customer
+         transactionCustomerIDs.push_back(customerIDs[rand() % numCustomers]);
+
+         std::vector<float> features;
+         for(int j=0; j < numTransactionFeatures; j++){
+             features.push_back(5.0);
+         }
+         
+         transactionFeatures.push_back(features);
+     }
+
+
+     // Prepare Customer table
+     auto customerIDVector = maker.flatVector<int64_t>(customerIDs);
+     auto customerFeaturesVector = maker.arrayVector<float>(customerFeatures, REAL());
+     auto customerRowVector = maker.rowVector(
+         {"customer_id", "customer_features"},
+         {customerIDVector, customerFeaturesVector}
+     );
+
+     // Prepare Transaction table
+     auto transactionIDVector = maker.flatVector<int64_t>(transactionIDs);
+     auto transactionCustomerIDVector = maker.flatVector<int64_t>(transactionCustomerIDs);
+     auto transactionFeaturesVector = maker.arrayVector<float>(transactionFeatures, REAL());
+     auto transactionRowVector = maker.rowVector(
+         {"transaction_id", "trans_customer_id", "transaction_features"},
+         {transactionIDVector, transactionCustomerIDVector, transactionFeaturesVector}
+     );
+
+     std::vector<RowVectorPtr> inputVectors = {customerRowVector, transactionRowVector};
+     
+     auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
+
+     auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
+ 
+     core::PlanNodeId p0;
+
+     ##.planNode(), {"row_id", "x", "tree_id", "tree"}
+
+     // Build the inner query plan
+     /*auto innerPlan = exec::test::PlanBuilder(pool_.get())
+                         .values(inputVectors)
+                         .filter("customer_id > 200")
+                         .filter("customer_id = trans_customer_id")  // Join on customer_id
+                         .project({"transaction_id AS tid", 
+                                   "transaction_features AS features"})
+                         .planNode();
+
+     // Build the outer query plan with filters and final projection
+     auto outerPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         //.values({innerPlan})
+                         .subquery(innerPlan)
+                         .capturePlanNodeId(p0)
+                         .filter("velox_decision_tree_predict(features) > 0.5")
+                         .filter("xgboost_predict_small(features) > 0.5")
+                         .project({"tid", "xgboost_predict(features)"})
+                         .planFragment();*/
+     
+     auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({transactionRowVector})
+                         .capturePlanNodeId(p0)
+                         .mergeJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({customerRowVector})
+                         .project({customer_id})
+                         )
+                         .filter("customer_id = trans_customer_id")
+                         .filter("customer_id > 200")
+                         .project({"transaction_id AS tid", 
+                                   "transaction_features AS features"})
+                         .filter("velox_decision_tree_predict(features) > 0.5")
+                         .filter("xgboost_predict_small(features) > 0.5")
+                         .project({"tid", "xgboost_predict(features)"})
+                         .planFragment();
+
+
+     // print statistics of a plan
+     queryCtx_->testingOverrideConfigUnsafe(
+         {{core::QueryConfig::kPreferredOutputBatchBytes, "1000000"}, 
+         {core::QueryConfig::kMaxOutputBatchRows, "100000"}});
+   
+     auto task = exec::Task::create("0", myPlan , 0, queryCtx_,
+           [](RowVectorPtr result, ContinueFuture* /*unused*/) {
+           if(result) {
+                 //std::cout << result->toString() << std::endl;
+                 //std::cout << result->toString(0, result->size()) << std::endl;
+           }      
+           return exec::BlockingReason::kNotBlocked;
+    });
+   
+    std::cout << "Data Hive splits:" << std::endl;
+    for(auto& split : dataHiveSplits) {
+         std::cout << split->toString() << std::endl;
+         task->addSplit(p0, exec::Split(std::move(split)));
+    }
+   
+ 
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+ 
+    int veloxThreads = 8;
+
+    task->start(veloxThreads);
+     
+ 
+    task->noMoreSplits(p0);
+   
+ 
+    // Start task with 2 as maximum drivers and wait for execution to finish
+    waitForFinishedDrivers(task);
+   
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+   
+    std::stringstream ss;
+
+    ss << numRows << "," << numDataSplits << "," << veloxThreads << ",";
+   
+    std::cout << "Time for Fraudulent Transaction Detection with Second Plan (sec): " << std::endl;
 
     std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
  
@@ -834,7 +1024,8 @@ void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, i
 
   else if (option == 2)
 
-      testingFraudDetection(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      testingFraudDetection1(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      testingFraudDetection2(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
 
   else
 
