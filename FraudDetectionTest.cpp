@@ -784,16 +784,16 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
                          .nestedLoopJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({customerRowVector})
                          .capturePlanNodeId(p0)
-                         //.filter("customer_id > 200")
+                         .filter("customer_id > 200")
                          //.project({"customer_id"})
                          .planNode(), {"transaction_id", "transaction_features", "customer_id", "customer_features"}
                          )
-                         //.filter("customer_id = trans_customer_id")
-                         //.project({"transaction_id AS tid", 
-                         //          "transaction_features AS features"})
-                         //.filter("velox_decision_tree_predict(features) > 0.5")
-                         //.filter("xgboost_predict_small(features) > 0.5")
-                         //.project({"tid", "xgboost_predict(features)"})
+                         .filter("customer_id = trans_customer_id")
+                         .project({"transaction_id AS tid", 
+                                   "transaction_features AS features"})
+                         .filter("velox_decision_tree_predict(features) > 0.5")
+                         .filter("xgboost_predict_small(features) > 0.5")
+                         .project({"tid", "xgboost_predict(features)"})
                          .planFragment();
 
 
@@ -805,8 +805,8 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
      auto task = exec::Task::create("0", myPlan , 0, queryCtx_,
            [](RowVectorPtr result, ContinueFuture* /*unused*/) {
            if(result) {
-                 std::cout << result->toString() << std::endl;
-                 std::cout << result->toString(0, result->size()) << std::endl;
+                 //std::cout << result->toString() << std::endl;
+                 //std::cout << result->toString(0, result->size()) << std::endl;
            }      
            return exec::BlockingReason::kNotBlocked;
     });
@@ -960,7 +960,7 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
          {core::QueryConfig::kMaxOutputBatchRows, "100000"}});
    
      auto task = exec::Task::create("0", myPlan , 0, queryCtx_,
-           [](RowVectorPtr result, ContinueFuture* /*unused*/) {
+           [](RowVectorPtr result, ContinueFuture*) {
            if(result) {
                  //std::cout << result->toString() << std::endl;
                  //std::cout << result->toString(0, result->size()) << std::endl;
