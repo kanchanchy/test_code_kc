@@ -688,8 +688,8 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
 
      //RowVectorPtr inputRowVector = writeDataToFile(dataFilePath, numRows, numCols, numDataSplits, path, dataBatchSize);
 
-     int numCustomers = 1000;
-     int numTransactions = 20000;
+     int numCustomers = 50;
+     int numTransactions = 500;
      int numCustomerFeatures = 10;
      int numTransactionFeatures = 28;
      
@@ -763,7 +763,7 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
                          .nestedLoopJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({customerRowVector})
                          .capturePlanNodeId(p0)
-                         .filter("customer_id > 200")
+                         .filter("customer_id > 35")
                          .planNode(), {"transaction_id", "trans_customer_id", "transaction_features", "customer_id", "customer_features"}
                          )
                          .filter("customer_id = trans_customer_id")
@@ -817,8 +817,8 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
     auto results = exec::test::AssertQueryBuilder(myPlan).copyResults(pool_.get());
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
-    std::cout << "Results:" << results->toString() << std::endl;
-    std::cout << results->toString(0, results->size()) << std::endl;
+    //std::cout << "Results:" << results->toString() << std::endl;
+    //std::cout << results->toString(0, results->size()) << std::endl;
    
     std::cout << "Time for Fraudulent Transaction Detection with First Plan (sec): " << std::endl;
 
