@@ -756,7 +756,7 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
      core::PlanNodeId p0;
      core::PlanNodeId p1;
 
-     
+     /*
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({transactionRowVector})
                          .capturePlanNodeId(p1)
@@ -771,6 +771,15 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
                                    "transaction_features AS features"})
                          //.filter("velox_decision_tree_predict(features) > 0.5")
                          .project({"tid", "xgboost_predict(features)"})
+                         .planNode();
+                         */
+     
+     auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({transactionRowVector})
+                         //.capturePlanNodeId(p0)
+                         //.project({"transaction_id AS tid", "transaction_features AS features"})
+                         //.filter("velox_decision_tree_predict(features) > 0.5")
+                         .project({"tid", "xgboost_predict(transaction_features)"})
                          .planNode();
 
 
