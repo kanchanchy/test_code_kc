@@ -1088,10 +1088,10 @@ void FraudDetectionTest::testingFraudDetection3(int numDataSplits, int dataBatch
                          //.capturePlanNodeId(p1)
                          .nestedLoopJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({transactionRowVector})
+                         .filter("customer_id = trans_customer_id")
                          //.capturePlanNodeId(p0)
                          .planNode(), {"customer_id", "customer_features", "transaction_id", "trans_customer_id", "transaction_features"}
                          )
-                         .filter("customer_id = trans_customer_id")
                          //.project({"transaction_id AS tid", "transaction_features AS features"})
                          //.filter("velox_decision_tree_predict(features) > 0.5")
                          .project({"transaction_id AS tid", "xgboost_predict(transaction_features) as label"})
