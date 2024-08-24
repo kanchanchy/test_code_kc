@@ -779,7 +779,7 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
                          //.capturePlanNodeId(p0)
                          //.project({"transaction_id AS tid", "transaction_features AS features"})
                          //.filter("velox_decision_tree_predict(features) > 0.5")
-                         .project({"tid", "xgboost_predict(transaction_features)"})
+                         .project({"transaction_id AS tid", "xgboost_predict(transaction_features) as label"})
                          .planNode();
 
 
