@@ -142,6 +142,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   void testingForestPredictLarge(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingFraudDetection1(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingFraudDetection2(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
+  void testingFraudDetection3(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingForestPredictCrossproductSmall();
   void testingForestPredictCrossproductLarge( bool whetherToReorderJoin, int numDataSplits, int numTreeSplits, 
                                               uint32_t numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath );
@@ -997,6 +998,169 @@ void FraudDetectionTest::testingFraudDetection2(int numDataSplits, int dataBatch
 }
 
 
+void FraudDetectionTest::testingFraudDetection3(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
+
+     //int numRows = 10;
+     //int numRows = 56962;
+     //int numCols = 28;
+     
+     //std::string dataFilePath = "resources/data/creditcard_test.csv";
+     //std::string dataFilePath = "/data/decision-forest-benchmark-paper/datasets/test10.csv";
+
+     auto dataFile = TempFilePath::create();                                                                      
+                      
+     std::string path = dataFile->path;
+
+     //RowVectorPtr inputRowVector = writeDataToFile(dataFilePath, numRows, numCols, numDataSplits, path, dataBatchSize);
+
+     int numCustomers = 100;
+     int numTransactions = 1000;
+     int numCustomerFeatures = 10;
+     int numTransactionFeatures = 28;
+     
+     // Customer table
+     std::vector<int64_t> customerIDs;
+     std::vector<std::vector<float>> customerFeatures;
+     
+     // Populate Customer table
+     for (int i = 0; i < numCustomers; ++i) {
+         customerIDs.push_back(i);  // Example: Customer IDs from 0 to 499
+
+         std::vector<float> features;
+         for(int j=0; j < numCustomerFeatures; j++){
+             features.push_back(2.0);
+         }
+         
+         customerFeatures.push_back(features);
+     }
+     
+     // Transaction table
+     std::vector<int64_t> transactionIDs;
+     std::vector<int64_t> transactionCustomerIDs;
+     std::vector<std::vector<float>> transactionFeatures;
+     
+     // Populate Transaction table
+     for (int i = 0; i < numTransactions; ++i) {
+         transactionIDs.push_back(i);  // Example: Transaction IDs from 0 to 4999
+         
+         // Randomly assign each transaction to a customer
+         transactionCustomerIDs.push_back(customerIDs[rand() % numCustomers]);
+
+         std::vector<float> features;
+         for(int j=0; j < numTransactionFeatures; j++){
+             features.push_back(5.0);
+         }
+         
+         transactionFeatures.push_back(features);
+     }
+
+
+     // Prepare Customer table
+     auto customerIDVector = maker.flatVector<int64_t>(customerIDs);
+     auto customerFeaturesVector = maker.arrayVector<float>(customerFeatures, REAL());
+     auto customerRowVector = maker.rowVector(
+         {"customer_id", "customer_features"},
+         {customerIDVector, customerFeaturesVector}
+     );
+
+     // Prepare Transaction table
+     auto transactionIDVector = maker.flatVector<int64_t>(transactionIDs);
+     auto transactionCustomerIDVector = maker.flatVector<int64_t>(transactionCustomerIDs);
+     auto transactionFeaturesVector = maker.arrayVector<float>(transactionFeatures, REAL());
+     auto transactionRowVector = maker.rowVector(
+         {"transaction_id", "trans_customer_id", "transaction_features"},
+         {transactionIDVector, transactionCustomerIDVector, transactionFeaturesVector}
+     );
+
+     std::vector<RowVectorPtr> inputVectors = {customerRowVector, transactionRowVector};
+     
+     auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
+
+     auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
+ 
+     core::PlanNodeId p0;
+     core::PlanNodeId p1;
+
+     
+     auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({customerRowVector})
+                         .filter("customer_id > 50")
+                         //.capturePlanNodeId(p1)
+                         .nestedLoopJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({transactionRowVector})
+                         //.capturePlanNodeId(p0)
+                         .planNode(), {"customer_id", "customer_features", "transaction_id", "trans_customer_id", "transaction_features"}
+                         )
+                         .filter("customer_id = trans_customer_id")
+                         //.project({"transaction_id AS tid", "transaction_features AS features"})
+                         //.filter("velox_decision_tree_predict(features) > 0.5")
+                         .project({"transaction_id AS tid", "xgboost_predict(transaction_features) as label"})
+                         .planNode();
+                         
+     /*
+     auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({transactionRowVector})
+                         //.capturePlanNodeId(p0)
+                         //.project({"transaction_id AS tid", "transaction_features AS features"})
+                         //.filter("velox_decision_tree_predict(features) > 0.5")
+                         .project({"transaction_id AS tid", "xgboost_predict(transaction_features) as label"})
+                         .planNode();
+                         */
+
+
+     // print statistics of a plan
+     /*
+     queryCtx_->testingOverrideConfigUnsafe(
+         {{core::QueryConfig::kPreferredOutputBatchBytes, "1000000"}, 
+         {core::QueryConfig::kMaxOutputBatchRows, "100000"}});
+   
+     auto task = exec::Task::create("0", myPlan , 0, queryCtx_,
+           [](RowVectorPtr result, ContinueFuture*) {
+           if(result) {
+                 //std::cout << result->toString() << std::endl;
+                 //std::cout << result->toString(0, result->size()) << std::endl;
+           }      
+           return exec::BlockingReason::kNotBlocked;
+    });
+   
+    std::cout << "Data Hive splits:" << std::endl;
+    for(auto& split : dataHiveSplits) {
+         std::cout << split->toString() << std::endl;
+         task->addSplit(p0, exec::Split(std::move(split)));
+    }*/
+   
+ 
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+ 
+    /*int veloxThreads = 8;
+
+    task->start(veloxThreads);
+     
+ 
+    task->noMoreSplits(p0);
+   
+ 
+    // Start task with 2 as maximum drivers and wait for execution to finish
+    waitForFinishedDrivers(task);
+   
+    std::stringstream ss;
+
+    ss << numRows << "," << numDataSplits << "," << veloxThreads << ",";
+    //std::cout << ss.str() << std::endl; */
+
+    auto results = exec::test::AssertQueryBuilder(myPlan).copyResults(pool_.get());
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+    //std::cout << "Results:" << results->toString() << std::endl;
+    //std::cout << results->toString(0, results->size()) << std::endl;
+   
+    std::cout << "Time for Fraudulent Transaction Detection with Third Plan (sec): " << std::endl;
+
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
+ 
+}
+
+
 void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
 
   std::cout << "Option is " << option << std::endl;
@@ -1010,6 +1174,7 @@ void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, i
       {
             testingFraudDetection1(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
             testingFraudDetection2(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+            testingFraudDetection3(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
       }
 
   else
