@@ -141,7 +141,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   void testingForestPredictSmall();
   void testingForestPredictLarge(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingFraudDetection1(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
-  //void testingFraudDetection2(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
+  void testingFraudDetection2(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingForestPredictCrossproductSmall();
   void testingForestPredictCrossproductLarge( bool whetherToReorderJoin, int numDataSplits, int numTreeSplits, 
                                               uint32_t numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath );
@@ -672,8 +672,6 @@ void FraudDetectionTest::testingForestPredictCrossproductLarge(bool whetherToReo
 
 
 void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
-
-     registerFunctions(modelFilePath, numCols);
    
      //int numRows = 10;
      //int numRows = 56962;
@@ -688,8 +686,8 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
 
      //RowVectorPtr inputRowVector = writeDataToFile(dataFilePath, numRows, numCols, numDataSplits, path, dataBatchSize);
 
-     int numCustomers = 50;
-     int numTransactions = 500;
+     int numCustomers = 100;
+     int numTransactions = 1000;
      int numCustomerFeatures = 10;
      int numTransactionFeatures = 28;
      
@@ -763,7 +761,7 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
                          .nestedLoopJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({customerRowVector})
                          //.capturePlanNodeId(p0)
-                         .filter("customer_id > 35")
+                         .filter("customer_id > 50")
                          .planNode(), {"transaction_id", "trans_customer_id", "transaction_features", "customer_id", "customer_features"}
                          )
                          .filter("customer_id = trans_customer_id")
@@ -836,10 +834,8 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
 }
 
 
-/*void FraudDetectionTest::testingFraudDetection2(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
+void FraudDetectionTest::testingFraudDetection2(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
 
-     registerFunctions(modelFilePath, numCols);
-   
      //int numRows = 10;
      //int numRows = 56962;
      //int numCols = 28;
@@ -853,8 +849,8 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
 
      //RowVectorPtr inputRowVector = writeDataToFile(dataFilePath, numRows, numCols, numDataSplits, path, dataBatchSize);
 
-     int numCustomers = 1000;
-     int numTransactions = 20000;
+     int numCustomers = 100;
+     int numTransactions = 1000;
      int numCustomerFeatures = 10;
      int numTransactionFeatures = 28;
      
@@ -921,30 +917,35 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
      core::PlanNodeId p0;
      core::PlanNodeId p1;
 
-     //.planNode(), {"row_id", "x", "tree_id", "tree"}
-
-     // Build the inner query pla
      
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({transactionRowVector})
-                         .capturePlanNodeId(p1)
+                         //.capturePlanNodeId(p1)
                          .nestedLoopJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({customerRowVector})
-                         .capturePlanNodeId(p0)
-                         .project({"customer_id"})
-                         .planNode()
+                         //.capturePlanNodeId(p0)
+                         .planNode(), {"transaction_id", "trans_customer_id", "transaction_features", "customer_id", "customer_features"}
                          )
                          .filter("customer_id = trans_customer_id")
-                         .filter("customer_id > 200")
-                         .project({"transaction_id AS tid", 
-                                   "transaction_features AS features"})
-                         .filter("velox_decision_tree_predict(features) > 0.5")
-                         .filter("xgboost_predict_small(features) > 0.5")
-                         .project({"tid", "xgboost_predict(features)"})
-                         .planFragment();
+                         .filter("customer_id > 50")
+                         //.project({"transaction_id AS tid", "transaction_features AS features"})
+                         //.filter("velox_decision_tree_predict(features) > 0.5")
+                         .project({"transaction_id AS tid", "xgboost_predict(transaction_features) as label"})
+                         .planNode();
+                         
+     /*
+     auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({transactionRowVector})
+                         //.capturePlanNodeId(p0)
+                         //.project({"transaction_id AS tid", "transaction_features AS features"})
+                         //.filter("velox_decision_tree_predict(features) > 0.5")
+                         .project({"transaction_id AS tid", "xgboost_predict(transaction_features) as label"})
+                         .planNode();
+                         */
 
 
      // print statistics of a plan
+     /*
      queryCtx_->testingOverrideConfigUnsafe(
          {{core::QueryConfig::kPreferredOutputBatchBytes, "1000000"}, 
          {core::QueryConfig::kMaxOutputBatchRows, "100000"}});
@@ -962,12 +963,12 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
     for(auto& split : dataHiveSplits) {
          std::cout << split->toString() << std::endl;
          task->addSplit(p0, exec::Split(std::move(split)));
-    }
+    }*/
    
  
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
  
-    int veloxThreads = 8;
+    /*int veloxThreads = 8;
 
     task->start(veloxThreads);
      
@@ -978,24 +979,28 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
     // Start task with 2 as maximum drivers and wait for execution to finish
     waitForFinishedDrivers(task);
    
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-   
     std::stringstream ss;
 
     ss << numRows << "," << numDataSplits << "," << veloxThreads << ",";
+    //std::cout << ss.str() << std::endl; */
+
+    auto results = exec::test::AssertQueryBuilder(myPlan).copyResults(pool_.get());
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+    //std::cout << "Results:" << results->toString() << std::endl;
+    //std::cout << results->toString(0, results->size()) << std::endl;
    
     std::cout << "Time for Fraudulent Transaction Detection with Second Plan (sec): " << std::endl;
 
     std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
  
-    std::cout << ss.str() << std::endl;
- 
-}*/
+}
 
 
 void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
 
   std::cout << "Option is " << option << std::endl;
+  registerFunctions(modelFilePath, numCols);
 
   if (option == 1)
 
@@ -1004,7 +1009,7 @@ void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, i
   else if (option == 2)
       {
             testingFraudDetection1(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
-            //testingFraudDetection2(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+            testingFraudDetection2(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
       }
 
   else
