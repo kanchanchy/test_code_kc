@@ -756,24 +756,23 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
      core::PlanNodeId p0;
      core::PlanNodeId p1;
 
-     /*
+     
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({transactionRowVector})
-                         .capturePlanNodeId(p1)
+                         //.capturePlanNodeId(p1)
                          .nestedLoopJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({customerRowVector})
-                         .capturePlanNodeId(p0)
+                         //.capturePlanNodeId(p0)
                          .filter("customer_id > 35")
                          .planNode(), {"transaction_id", "trans_customer_id", "transaction_features", "customer_id", "customer_features"}
                          )
                          .filter("customer_id = trans_customer_id")
-                         .project({"transaction_id AS tid", 
-                                   "transaction_features AS features"})
+                         //.project({"transaction_id AS tid", "transaction_features AS features"})
                          //.filter("velox_decision_tree_predict(features) > 0.5")
-                         .project({"tid", "xgboost_predict(features)"})
+                         .project({"transaction_id AS tid", "xgboost_predict(transaction_features) as label"})
                          .planNode();
-                         */
-     
+                         
+     /*
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({transactionRowVector})
                          //.capturePlanNodeId(p0)
@@ -781,6 +780,7 @@ void FraudDetectionTest::testingFraudDetection1(int numDataSplits, int dataBatch
                          //.filter("velox_decision_tree_predict(features) > 0.5")
                          .project({"transaction_id AS tid", "xgboost_predict(transaction_features) as label"})
                          .planNode();
+                         */
 
 
      // print statistics of a plan
