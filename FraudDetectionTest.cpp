@@ -99,9 +99,9 @@ class ConcatFloatVectorsFunction : public exec::VectorFunction {
 
   static std::vector<exec::FunctionSignaturePtr> signatures() {
     return {exec::FunctionSignatureBuilder()
-                .returnType("array<float>")
-                .argumentType("array<float>")
-                .argumentType("array<float>")
+                .returnType("array(REAL)")
+                .argumentType("array(REAL)")
+                .argumentType("array(REAL)")
                 .build()};
   }
 };
