@@ -59,43 +59,58 @@ using namespace facebook::velox::exec::test;
 using namespace facebook::velox::core;
 
 
-class ConcatFloatVectorsFunction : public MLFunction {
+class ConcatFloatVectorsFunction : public exec::VectorFunction {
  public:
+  // The apply method to implement vector processing logic
   void apply(
       const SelectivityVector& rows,
       std::vector<VectorPtr>& args,
       const TypePtr& outputType,
-      exec::EvalCtx& context,
-      VectorPtr& result) const override {
+      exec::EvalCtx* context,
+      VectorPtr* result) const override {
 
-    auto inputVector1 = args[0]->as<FlatVector<float>>();
-    auto inputVector2 = args[1]->as<FlatVector<float>>();
+    // Input vectors
+    auto inputVector1 = args[0]->as<ArrayVector>();  // First vector of floats
+    auto inputVector2 = args[1]->as<ArrayVector>();  // Second vector of floats
 
-    auto concatenatedSize = inputVector1->size() + inputVector2->size();
-    auto flatResult = (result)->asFlatVector<float>();
-    if (!flatResult) {
-      flatResult = BaseVector::create<FlatVector<float>>(outputType, concatenatedSize, context.pool());
-    }
+    // Create an output vector to store the concatenated result
+    auto outputArray = BaseVector::create<ArrayVector>(outputType, rows.size(), context->pool());
+    auto flatResult = outputArray->elements()->as<FlatVector<float>>();
 
-    size_t index = 0;
+    vector_size_t currentOutputSize = 0;
+    flatResult->resize(inputVector1->elements()->size() + inputVector2->elements()->size());
+
+    // Iterate over each row and concatenate the vectors
     for (auto row = rows.begin(); row != rows.end(); ++row) {
-      for (int i = 0; i < inputVector1->size(); ++i) {
-        flatResult->set(index++, inputVector1->valueAt(i));
+      auto elements1 = inputVector1->elements()->as<FlatVector<float>>();
+      auto elements2 = inputVector2->elements()->as<FlatVector<float>>();
+
+      size_t size1 = inputVector1->sizeAt(row);
+      size_t size2 = inputVector2->sizeAt(row);
+
+      // Copy elements from the first vector
+      for (size_t i = 0; i < size1; ++i) {
+        flatResult->set(currentOutputSize++, elements1->valueAt(i));
       }
-      for (int j = 0; j < inputVector2->size(); ++j) {
-        flatResult->set(index++, inputVector2->valueAt(j));
+
+      // Copy elements from the second vector
+      for (size_t j = 0; j < size2; ++j) {
+        flatResult->set(currentOutputSize++, elements2->valueAt(j));
       }
+
+      outputArray->set(row, currentOutputSize);
     }
-    result* = flatResult;
+
+    *result = std::move(outputArray);
   }
 
-  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
-    return {
-        exec::FunctionSignatureBuilder()
-            .returnType("array<float>")
-            .argumentType("array<float>")
-            .argumentType("array<float>")
-            .build()};
+  // Function signatures for Velox registration
+  static std::vector<exec::FunctionSignaturePtr> signatures() {
+    return {exec::FunctionSignatureBuilder()
+                .returnType("array<float>")
+                .argumentType("array<float>")
+                .argumentType("array<float>")
+                .build()};
   }
 };
 
