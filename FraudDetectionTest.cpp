@@ -1093,8 +1093,8 @@ void FraudDetectionTest::testingFraudDetection3(int numDataSplits, int dataBatch
                          .filter("customer_id = trans_customer_id")
                          //.project({"transaction_id AS tid", "transaction_features AS features"})
                          //.filter("velox_decision_tree_predict(features) > 0.5")
-                         .project("transaction_id AS tid", "concat_float_vectors(customer_features, transaction_features) AS features")
-                         //.project({"tid", "xgboost_predict(features) AS label"})
+                         .project({"transaction_id AS tid", "concat_float_vectors(customer_features, transaction_features) AS features"})
+                         .project({"tid", "xgboost_predict(features) AS label"})
                          .planNode();
                          
      /*
