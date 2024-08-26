@@ -43,6 +43,7 @@
 #include "velox/ml_functions/DecisionForest.h"
 #include "velox/ml_functions/XGBoost.h"
 #include "velox/ml_functions/tests/MLTestUtility.h"
+#include "velox/ml_functions/functions.h"
 #include "velox/parse/TypeResolver.h"
 #include "velox/ml_functions/VeloxDecisionTree.h"
 #include "velox/expression/VectorFunction.h"
@@ -58,23 +59,22 @@ using namespace facebook::velox::exec::test;
 using namespace facebook::velox::core;
 
 
-class ConcatFloatVectorsFunction : public exec::VectorFunction {
+class ConcatFloatVectorsFunction : public MLFunction {
  public:
   void apply(
       const SelectivityVector& rows,
       std::vector<VectorPtr>& args,
       const TypePtr& outputType,
-      exec::EvalCtx* context,
-      VectorPtr* result) const override {
+      exec::EvalCtx& context,
+      VectorPtr& result) const override {
 
     auto inputVector1 = args[0]->as<FlatVector<float>>();
     auto inputVector2 = args[1]->as<FlatVector<float>>();
 
     auto concatenatedSize = inputVector1->size() + inputVector2->size();
-    auto flatResult = (*result)->asFlatVector<float>();
+    auto flatResult = (result)->asFlatVector<float>();
     if (!flatResult) {
       flatResult = BaseVector::create<FlatVector<float>>(outputType, concatenatedSize, context->pool());
-      *result = flatResult;
     }
 
     size_t index = 0;
@@ -86,9 +86,10 @@ class ConcatFloatVectorsFunction : public exec::VectorFunction {
         flatResult->set(index++, inputVector2->valueAt(j));
       }
     }
+    result = flatResult;
   }
 
-  static std::vector<exec::FunctionSignaturePtr> signatures() {
+  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
     return {
         exec::FunctionSignatureBuilder()
             .returnType("array<float>")
