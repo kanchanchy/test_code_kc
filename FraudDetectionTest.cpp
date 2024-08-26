@@ -97,7 +97,7 @@ class ConcatFloatVectorsFunction : public exec::VectorFunction {
     result = std::move(flatResult);
   }
 
-  static std::vector<exec::FunctionSignaturePtr> signatures() {
+  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
     return {exec::FunctionSignatureBuilder()
                 .returnType("array(REAL)")
                 .argumentType("array(REAL)")
