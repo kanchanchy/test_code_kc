@@ -74,7 +74,7 @@ class ConcatFloatVectorsFunction : public MLFunction {
     auto concatenatedSize = inputVector1->size() + inputVector2->size();
     auto flatResult = (result)->asFlatVector<float>();
     if (!flatResult) {
-      flatResult = BaseVector::create<FlatVector<float>>(outputType, concatenatedSize, context->pool());
+      flatResult = BaseVector::create<FlatVector<float>>(outputType, concatenatedSize, context.pool());
     }
 
     size_t index = 0;
@@ -86,7 +86,7 @@ class ConcatFloatVectorsFunction : public MLFunction {
         flatResult->set(index++, inputVector2->valueAt(j));
       }
     }
-    result = flatResult;
+    result* = flatResult;
   }
 
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
