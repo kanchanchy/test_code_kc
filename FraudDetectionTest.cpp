@@ -1087,7 +1087,7 @@ void FraudDetectionTest::testingFraudDetection3(int numDataSplits, int dataBatch
      core::PlanNodeId p1;
 
      
-     auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+     /*auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({customerRowVector})
                          .filter("customer_id > 50")
                          //.capturePlanNodeId(p1)
@@ -1101,17 +1101,25 @@ void FraudDetectionTest::testingFraudDetection3(int numDataSplits, int dataBatch
                          //.filter("velox_decision_tree_predict(features) > 0.5")
                          .project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
                          .project({"tid", "xgboost_predict(features) AS label"})
-                         .planNode();
+                         .planNode(); */
                          
-     /*
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({customerRowVector})
+                         .filter("customer_id > 50")
+                         //.capturePlanNodeId(p1)
+                         .hashJoin({"customer_id"},
+                         {"trans_customer_id"},
+                         exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({transactionRowVector})
                          //.capturePlanNodeId(p0)
+                         .planNode(),
+                         "",
+                         {"customer_id", "customer_features", "transaction_id", "transaction_features"})
                          //.project({"transaction_id AS tid", "transaction_features AS features"})
                          //.filter("velox_decision_tree_predict(features) > 0.5")
-                         .project({"transaction_id AS tid", "xgboost_predict(transaction_features) as label"})
+                         .project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
+                         .project({"tid", "xgboost_predict(features) AS label"})
                          .planNode();
-                         */
 
 
      // print statistics of a plan
