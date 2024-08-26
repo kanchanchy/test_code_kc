@@ -44,6 +44,7 @@
 #include "velox/ml_functions/XGBoost.h"
 #include "velox/ml_functions/tests/MLTestUtility.h"
 #include "velox/ml_functions/functions.h"
+#include "velox/ml_functions/Concat.h"
 #include "velox/parse/TypeResolver.h"
 #include "velox/ml_functions/VeloxDecisionTree.h"
 #include "velox/expression/VectorFunction.h"
@@ -226,10 +227,15 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
       TreePrediction::signatures(),
       std::make_unique<ForestPrediction>(modelFilePath, numCols, true));
 
-  exec::registerVectorFunction(
+  /*exec::registerVectorFunction(
         "concat_float_vectors",
         ConcatFloatVectorsFunction::signatures(),
-        std::make_unique<ConcatFloatVectorsFunction>());
+        std::make_unique<ConcatFloatVectorsFunction>());*/
+
+  exec::registerVectorFunction(
+      "concat_vectors",
+      Concat::signatures(),
+      std::make_unique<Concat>(10, 18));
 
 }
 
@@ -1093,8 +1099,8 @@ void FraudDetectionTest::testingFraudDetection3(int numDataSplits, int dataBatch
                          .filter("customer_id = trans_customer_id")
                          //.project({"transaction_id AS tid", "transaction_features AS features"})
                          //.filter("velox_decision_tree_predict(features) > 0.5")
-                         .project({"transaction_id AS tid", "concat_float_vectors(customer_features, transaction_features) AS features"})
-                         //.project({"tid", "xgboost_predict(features) AS label"})
+                         .project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
+                         .project({"tid", "xgboost_predict(features) AS label"})
                          .planNode();
                          
      /*
