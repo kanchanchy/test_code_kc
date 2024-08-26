@@ -90,7 +90,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   void run( int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   
   RowVectorPtr getCustomerData(int numCustomers, int numCustomerFeatures);
-  RowVectorPtr getTransactionData(int numTransactions, int numTransactionFeatures);
+  RowVectorPtr getTransactionData(int numTransactions, int numTransactionFeatures, int numCustomers);
   
   void testingNestedLoopJoinWithPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingNestedLoopJoinWithoutPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
@@ -281,7 +281,7 @@ RowVectorPtr FraudDetectionTest::getCustomerData(int numCustomers, int numCustom
 }
 
 
-RowVectorPtr FraudDetectionTest::getTransactionData(int numTransactions, int numTransactionFeatures) {
+RowVectorPtr FraudDetectionTest::getTransactionData(int numTransactions, int numTransactionFeatures, int numCustomers) {
     
     // Transaction table
      std::vector<int64_t> transactionIDs;
@@ -293,7 +293,7 @@ RowVectorPtr FraudDetectionTest::getTransactionData(int numTransactions, int num
          transactionIDs.push_back(i);  // Example: Transaction IDs from 0 to 4999
          
          // Randomly assign each transaction to a customer
-         transactionCustomerIDs.push_back(customerIDs[rand() % numCustomers]);
+         transactionCustomerIDs.push_back(rand() % numCustomers);
 
          std::vector<float> features;
          for(int j=0; j < numTransactionFeatures; j++){
@@ -329,7 +329,7 @@ void FraudDetectionTest::testingNestedLoopJoinWithPredicatePush(int numDataSplit
 
      // Retrieve the customer and transaction data
      RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures);
+     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
@@ -377,7 +377,7 @@ void FraudDetectionTest::testingNestedLoopJoinWithoutPredicatePush(int numDataSp
      
      // Retrieve the customer and transaction data
      RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures);
+     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
@@ -425,7 +425,7 @@ void FraudDetectionTest::testingHashJoinWithPredicatePush(int numDataSplits, int
      
      // Retrieve the customer and transaction data
      RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures);
+     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
@@ -475,7 +475,7 @@ void FraudDetectionTest::testingHashJoinWithoutPredicatePush(int numDataSplits, 
      
      // Retrieve the customer and transaction data
      RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures);
+     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
