@@ -61,24 +61,21 @@ using namespace facebook::velox::core;
 
 class ConcatFloatVectorsFunction : public exec::VectorFunction {
  public:
-  // The apply method to implement vector processing logic
   void apply(
       const SelectivityVector& rows,
       std::vector<VectorPtr>& args,
       const TypePtr& outputType,
-      exec::EvalCtx* context,
-      VectorPtr* result) const override {
-
-    // Input vectors
+      exec::EvalCtx& context,
+      VectorPtr& result) const override {
+      
+    // Ensure input vectors are correctly cast to their appropriate types
     auto inputVector1 = args[0]->as<ArrayVector>();  // First vector of floats
     auto inputVector2 = args[1]->as<ArrayVector>();  // Second vector of floats
 
-    // Create an output vector to store the concatenated result
-    auto outputArray = BaseVector::create<ArrayVector>(outputType, rows.size(), context->pool());
-    auto flatResult = outputArray->elements()->as<FlatVector<float>>();
-
-    vector_size_t currentOutputSize = 0;
-    flatResult->resize(inputVector1->elements()->size() + inputVector2->elements()->size());
+    // Allocate the result vector
+    auto flatResult = BaseVector::create<FlatVector<float>>(outputType, rows.size(), context.pool());
+    
+    auto offset = 0;
 
     // Iterate over each row and concatenate the vectors
     for (auto row = rows.begin(); row != rows.end(); ++row) {
@@ -88,23 +85,18 @@ class ConcatFloatVectorsFunction : public exec::VectorFunction {
       size_t size1 = inputVector1->sizeAt(row);
       size_t size2 = inputVector2->sizeAt(row);
 
-      // Copy elements from the first vector
+      // Concatenate values from input vectors
       for (size_t i = 0; i < size1; ++i) {
-        flatResult->set(currentOutputSize++, elements1->valueAt(i));
+        flatResult->set(offset++, elements1->valueAt(i));
       }
-
-      // Copy elements from the second vector
       for (size_t j = 0; j < size2; ++j) {
-        flatResult->set(currentOutputSize++, elements2->valueAt(j));
+        flatResult->set(offset++, elements2->valueAt(j));
       }
-
-      outputArray->set(row, currentOutputSize);
     }
 
-    *result = std::move(outputArray);
+    result = std::move(flatResult);
   }
 
-  // Function signatures for Velox registration
   static std::vector<exec::FunctionSignaturePtr> signatures() {
     return {exec::FunctionSignatureBuilder()
                 .returnType("array<float>")
