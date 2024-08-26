@@ -277,7 +277,7 @@ RowVectorPtr FraudDetectionTest::getCustomerData(int numCustomers, int numCustom
          {customerIDVector, customerFeaturesVector}
      );
 
-     return customerRowVector
+     return customerRowVector;
 }
 
 
@@ -312,7 +312,7 @@ RowVectorPtr FraudDetectionTest::getTransactionData(int numTransactions, int num
          {transactionIDVector, transactionCustomerIDVector, transactionFeaturesVector}
      );
 
-     return transactionRowVector
+     return transactionRowVector;
 }
 
 
@@ -328,8 +328,8 @@ void FraudDetectionTest::testingNestedLoopJoinWithPredicatePush(int numDataSplit
      int numTransactionFeatures = 18;
 
      // Retrieve the customer and transaction data
-     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures)
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures)
+     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
+     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
@@ -376,8 +376,8 @@ void FraudDetectionTest::testingNestedLoopJoinWithoutPredicatePush(int numDataSp
      int numTransactionFeatures = 18;
      
      // Retrieve the customer and transaction data
-     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures)
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures)
+     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
+     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
@@ -424,8 +424,8 @@ void FraudDetectionTest::testingHashJoinWithPredicatePush(int numDataSplits, int
      int numTransactionFeatures = 18;
      
      // Retrieve the customer and transaction data
-     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures)
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures)
+     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
+     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
@@ -474,8 +474,8 @@ void FraudDetectionTest::testingHashJoinWithoutPredicatePush(int numDataSplits, 
      int numTransactionFeatures = 18;
      
      // Retrieve the customer and transaction data
-     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures)
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures)
+     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
+     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
