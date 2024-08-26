@@ -58,54 +58,45 @@ using namespace facebook::velox::exec::test;
 using namespace facebook::velox::core;
 
 
-/*class ConcatFloatVectorsFunction : public exec::VectorFunction {
-public:
-  // Apply method to concatenate input vectors
+class ConcatFloatVectorsFunction : public exec::VectorFunction {
+ public:
   void apply(
-    const SelectivityVector& rows,
-    std::vector<VectorPtr>& args,
-    const TypePtr& outputType,
-    exec::EvalCtx* context,
-    VectorPtr* result) const override {
-    
-    // Cast inputs to FlatVector<float>
-    auto vec1 = args[0]->as<FlatVector<float>>();
-    auto vec2 = args[1]->as<FlatVector<float>>();
+      const SelectivityVector& rows,
+      std::vector<VectorPtr>& args,
+      const TypePtr& outputType,
+      exec::EvalCtx* context,
+      VectorPtr* result) const override {
 
-    // Prepare the output vector
-    auto flatResult = BaseVector::create<FlatVector<float>>(outputType, rows.size(), context->pool());
-    //auto flatResult = makeFlatVector<float>(context->pool(), concatenatedVec.size(), concatenatedVec);
+    auto inputVector1 = args[0]->as<FlatVector<float>>();
+    auto inputVector2 = args[1]->as<FlatVector<float>>();
 
-
-    // Concatenate vectors for each row
-    for (auto row = rows.begin(); row != rows.end(); ++row) {
-      std::vector<float> concatenatedVec;
-      concatenatedVec.reserve(vec1->size() + vec2->size());
-
-      // Concatenate values from both vectors
-      for (int i = 0; i < vec1->size(); ++i) {
-        concatenatedVec.push_back(vec1->valueAt(i));
-      }
-      for (int i = 0; i < vec2->size(); ++i) {
-        concatenatedVec.push_back(vec2->valueAt(i));
-      }
-
-      // Set the concatenated result in the output vector
-      flatResult->set(row, makeFlatVector<float>(concatenatedVec));
+    auto concatenatedSize = inputVector1->size() + inputVector2->size();
+    auto flatResult = (*result)->asFlatVector<float>();
+    if (!flatResult) {
+      flatResult = BaseVector::create<FlatVector<float>>(outputType, concatenatedSize, context->pool());
+      *result = flatResult;
     }
 
-    *result = flatResult;
+    size_t index = 0;
+    for (auto row = rows.begin(); row != rows.end(); ++row) {
+      for (int i = 0; i < inputVector1->size(); ++i) {
+        flatResult->set(index++, inputVector1->valueAt(i));
+      }
+      for (int j = 0; j < inputVector2->size(); ++j) {
+        flatResult->set(index++, inputVector2->valueAt(j));
+      }
+    }
   }
 
-  // Define the function signatures
   static std::vector<exec::FunctionSignaturePtr> signatures() {
-    return {exec::FunctionSignatureBuilder()
-                .returnType("ARRAY<FLOAT>")
-                .argumentType("ARRAY<FLOAT>")
-                .argumentType("ARRAY<FLOAT>")
-                .build()};
+    return {
+        exec::FunctionSignatureBuilder()
+            .returnType("array<float>")
+            .argumentType("array<float>")
+            .argumentType("array<float>")
+            .build()};
   }
-};*/
+};
 
 
 
@@ -227,10 +218,10 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
       TreePrediction::signatures(),
       std::make_unique<ForestPrediction>(modelFilePath, numCols, true));
 
-  /*exec::registerVectorFunction(
-      "feature_extract",
-      ConcatFloatVectorsFunction::signatures(),
-      std::make_unique<ConcatFloatVectorsFunction>());*/
+  exec::registerVectorFunction(
+        "concat_float_vectors",
+        ConcatFloatVectorsFunction::signatures(),
+        std::make_unique<ConcatFloatVectorsFunction>());
 
 }
 
@@ -1016,7 +1007,7 @@ void FraudDetectionTest::testingFraudDetection3(int numDataSplits, int dataBatch
      int numCustomers = 100;
      int numTransactions = 1000;
      int numCustomerFeatures = 10;
-     int numTransactionFeatures = 28;
+     int numTransactionFeatures = 18;
      
      // Customer table
      std::vector<int64_t> customerIDs;
@@ -1088,13 +1079,14 @@ void FraudDetectionTest::testingFraudDetection3(int numDataSplits, int dataBatch
                          //.capturePlanNodeId(p1)
                          .nestedLoopJoin(exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({transactionRowVector})
-                         .filter("customer_id = trans_customer_id")
                          //.capturePlanNodeId(p0)
                          .planNode(), {"customer_id", "customer_features", "transaction_id", "trans_customer_id", "transaction_features"}
                          )
+                         .filter("customer_id = trans_customer_id")
                          //.project({"transaction_id AS tid", "transaction_features AS features"})
                          //.filter("velox_decision_tree_predict(features) > 0.5")
-                         .project({"transaction_id AS tid", "xgboost_predict(transaction_features) as label"})
+                         .project("transaction_id AS tid", "concat_float_vectors(customer_features, transaction_features) AS features")
+                         .project({"tid", "xgboost_predict(features) AS label"})
                          .planNode();
                          
      /*
