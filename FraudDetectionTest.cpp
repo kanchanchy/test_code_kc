@@ -696,15 +696,15 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
      auto itemNNBias3Vector = maker.arrayVector<float>(itemNNBias3, REAL());
 
      std::string compute =  NNBuilder()
-                            .denseLayer(32 ,numCols,
+                            .denseLayer(32, numCols,
                             itemNNweight1Vector->elements()->values()->asMutable<float>(), 
                             itemNNBias1Vector->elements()->values()->asMutable<float>(),
                             NNBuilder::RELU)
-                            .denseLayer(32 ,16,
+                            .denseLayer(16, 32,
                             itemNNweight2Vector->elements()->values()->asMutable<float>(), 
                             itemNNBias2Vector->elements()->values()->asMutable<float>(),
                             NNBuilder::RELU)
-                            .denseLayer(16 ,2,
+                            .denseLayer(2, 16,
                             itemNNweight3Vector->elements()->values()->asMutable<float>(), 
                             itemNNBias3Vector->elements()->values()->asMutable<float>(),
                             NNBuilder::SOFTMAX)
