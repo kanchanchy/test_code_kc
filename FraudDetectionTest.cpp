@@ -45,6 +45,9 @@
 #include "velox/ml_functions/tests/MLTestUtility.h"
 #include "velox/ml_functions/functions.h"
 #include "velox/ml_functions/Concat.h"
+#include "velox/ml_functions/NNBuilder.h"
+#include <fstream>
+#include <sstream>
 #include "velox/parse/TypeResolver.h"
 #include "velox/ml_functions/VeloxDecisionTree.h"
 #include "velox/expression/VectorFunction.h"
@@ -87,7 +90,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   ~FraudDetectionTest() {}
 
   void registerFunctions(std::string modelFilePath="resources/model/fraud_xgboost_1600_8", int numCols = 28);
-  void registerNNFunctions(int numCols);
+  //void registerNNFunctions(int numCols);
   void run( int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   
   RowVectorPtr getCustomerData(int numCustomers, int numCustomerFeatures);
@@ -161,7 +164,7 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
 
 }
 
-
+/*
 void FraudDetectionTest::registerNNFunctions(int numCols) {
 
   randomGenerator.setFloatRange(-1, 1);
@@ -237,7 +240,7 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
   exec::registerVectorFunction(
       "sigmoid", Sigmoid::signatures(), std::make_unique<Sigmoid>());
 
-}
+}*/
 
 
 ArrayVectorPtr FraudDetectionTest::parseCSVFile(VectorMaker & maker, std::string filePath, int numRows, int numCols) {
@@ -661,14 +664,49 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
      int numTransactions = 1000;
      int numCustomerFeatures = 10;
      int numTransactionFeatures = 18;
+     numCols = numCustomerFeatures + numTransactionFeatures
 
-     registerNNFunctions(numCustomerFeatures + numTransactionFeatures);
+     //registerNNFunctions(numCustomerFeatures + numTransactionFeatures);
      
      // Retrieve the customer and transaction data
      RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
      RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
+
+     randomGenerator.setFloatRange(-1, 1);
+     std::vector<std::vector<float>> itemNNweight1 = randomGenerator.genFloat2dVector(numCols, 32);
+     auto itemNNweight1Vector = maker.arrayVector<float>(itemNNweight1, REAL());
+     
+     std::vector<std::vector<float>> itemNNBias1 = randomGenerator.genFloat2dVector(32, 1);
+     auto itemNNBias1Vector = maker.arrayVector<float>(itemNNBias1, REAL());
+     
+     std::vector<std::vector<float>> itemNNweight2 = randomGenerator.genFloat2dVector(32, 16);
+     auto itemNNweight2Vector = maker.arrayVector<float>(itemNNweight2, REAL());
+     
+     std::vector<std::vector<float>> itemNNBias2 = randomGenerator.genFloat2dVector(16, 1);
+     auto itemNNBias2Vector = maker.arrayVector<float>(itemNNBias2, REAL());
+     
+     std::vector<std::vector<float>> itemNNweight3 = randomGenerator.genFloat2dVector(16, 2);
+     auto itemNNweight3Vector = maker.arrayVector<float>(itemNNweight3, REAL());
+     
+     std::vector<std::vector<float>> itemNNBias3 = randomGenerator.genFloat2dVector(2, 1);
+     auto itemNNBias3Vector = maker.arrayVector<float>(itemNNBias3, REAL());
+
+     std::string compute =  NNBuilder()
+                            .denseLayer(32 ,numCols,
+                            itemNNweight1Vector->elements()->values()->asMutable<float>(), 
+                            itemNNBias1Vector->elements()->values()->asMutable<float>(),
+                            NNBuilder::RELU)
+                            .denseLayer(32 ,16,
+                            itemNNweight2Vector->elements()->values()->asMutable<float>(), 
+                            itemNNBias2Vector->elements()->values()->asMutable<float>(),
+                            NNBuilder::RELU)
+                            .denseLayer(16 ,2,
+                            itemNNweight3Vector->elements()->values()->asMutable<float>(), 
+                            itemNNBias3Vector->elements()->values()->asMutable<float>(),
+                            NNBuilder::SIGMOID)
+                            .build();
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
     
@@ -684,7 +722,8 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
                          "",
                          {"customer_id", "customer_features", "transaction_id", "transaction_features"})
                          .project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
-                         .project({"tid", "sigmoid(mat_vector_add3(mat_mul3(relu(mat_vector_add2(mat_mul2(relu(mat_vector_add1(mat_mul1(features))))))))) AS label"})
+                         //.project({"tid", "sigmoid(mat_vector_add3(mat_mul3(relu(mat_vector_add2(mat_mul2(relu(mat_vector_add1(mat_mul1(features))))))))) AS label"})
+                         .project({"tid", fmt::format(compute, "features")}) 
                          .planNode();
    
  
