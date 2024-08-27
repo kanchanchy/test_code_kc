@@ -724,8 +724,9 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
                          "",
                          {"customer_id", "customer_features", "transaction_id", "transaction_features"})
                          .project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
+                         .filter("xgboost_predict(features) > 0.5")
                          //.project({"tid", "sigmoid(mat_vector_add3(mat_mul3(relu(mat_vector_add2(mat_mul2(relu(mat_vector_add1(mat_mul1(features))))))))) AS label"})
-                         .project({"tid", fmt::format(compute, "features")}) 
+                         .project({"tid", fmt::format(compute, "features") + " AS labels"})
                          .planNode();
    
  
