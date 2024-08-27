@@ -662,7 +662,7 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
      int numCustomerFeatures = 10;
      int numTransactionFeatures = 18;
 
-     registerNNFunctions(numCustomerFeatures + numTransactionFeatures)
+     registerNNFunctions(numCustomerFeatures + numTransactionFeatures);
      
      // Retrieve the customer and transaction data
      RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
