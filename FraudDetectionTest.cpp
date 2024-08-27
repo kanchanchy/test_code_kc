@@ -87,6 +87,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   ~FraudDetectionTest() {}
 
   void registerFunctions(std::string modelFilePath="resources/model/fraud_xgboost_1600_8", int numCols = 28);
+  void registerNNFunctions(int numCols);
   void run( int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   
   RowVectorPtr getCustomerData(int numCustomers, int numCustomerFeatures);
@@ -97,6 +98,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   void testingHashJoinWithPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingHashJoinWithoutPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingHashJoinWithPredictFilter(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
+  void testingHashJoinWithNeuralNetwork(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
 
   ArrayVectorPtr parseCSVFile(VectorMaker & maker, std::string filePath, int numRows, int numCols);
 
@@ -156,6 +158,84 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
       "concat_vectors",
       Concat::signatures(),
       std::make_unique<Concat>(10, 18));
+
+}
+
+
+void FraudDetectionTest::registerNNFunctions(int numCols) {
+
+  randomGenerator.setFloatRange(-1, 1);
+  std::vector<std::vector<float>> itemNNweight1 =
+      randomGenerator.genFloat2dVector(numCols, 32);
+  auto itemNNweight1Vector = maker.arrayVector<float>(itemNNweight1, REAL());
+
+  std::vector<std::vector<float>> itemNNBias1 =
+      randomGenerator.genFloat2dVector(32, 1);
+  auto itemNNBias1Vector = maker.arrayVector<float>(itemNNBias1, REAL());
+
+  std::vector<std::vector<float>> itemNNweight2 =
+      randomGenerator.genFloat2dVector(32, 16);
+  auto itemNNweight2Vector = maker.arrayVector<float>(itemNNweight2, REAL());
+
+  std::vector<std::vector<float>> itemNNBias2 =
+      randomGenerator.genFloat2dVector(16, 1);
+  auto itemNNBias2Vector = maker.arrayVector<float>(itemNNBias2, REAL());
+
+  std::vector<std::vector<float>> itemNNweight3 =
+      randomGenerator.genFloat2dVector(16, 2);
+  auto itemNNweight3Vector = maker.arrayVector<float>(itemNNweight3, REAL());
+
+  std::vector<std::vector<float>> itemNNBias3 =
+      randomGenerator.genFloat2dVector(2, 1);
+  auto itemNNBias3Vector = maker.arrayVector<float>(itemNNBias3, REAL());
+
+  exec::registerVectorFunction(
+      "mat_mul_1",
+      MatrixMultiply::signatures(),
+      std::make_unique<MatrixMultiply>(
+          itemNNweight1Vector->elements()->values()->asMutable<float>(),
+          numCols,
+          32));
+
+  exec::registerVectorFunction(
+      "mat_vector_add_1",
+      MatrixVectorAddition::signatures(),
+      std::make_unique<MatrixVectorAddition>(
+          itemNNBias1Vector->elements()->values()->asMutable<float>(), 32));
+
+  exec::registerVectorFunction(
+      "mat_mul_2",
+      MatrixMultiply::signatures(),
+      std::make_unique<MatrixMultiply>(
+          itemNNweight2Vector->elements()->values()->asMutable<float>(),
+          32,
+          16));
+
+  exec::registerVectorFunction(
+      "mat_vector_add_2",
+      MatrixVectorAddition::signatures(),
+      std::make_unique<MatrixVectorAddition>(
+          itemNNBias2Vector->elements()->values()->asMutable<float>(), 16));
+
+  exec::registerVectorFunction(
+      "mat_mul_3",
+      MatrixMultiply::signatures(),
+      std::make_unique<MatrixMultiply>(
+          itemNNweight3Vector->elements()->values()->asMutable<float>(),
+          16,
+          2));
+
+  exec::registerVectorFunction(
+      "mat_vector_add_3",
+      MatrixVectorAddition::signatures(),
+      std::make_unique<MatrixVectorAddition>(
+          itemNNBias3Vector->elements()->values()->asMutable<float>(), 2));
+
+  exec::registerVectorFunction(
+      "relu", Relu::signatures(), std::make_unique<Relu>());
+
+  exec::registerVectorFunction(
+      "sigmoid", Sigmoid::signatures(), std::make_unique<Sigmoid>());
 
 }
 
@@ -571,6 +651,58 @@ void FraudDetectionTest::testingHashJoinWithPredictFilter(int numDataSplits, int
 }
 
 
+void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
+
+     auto dataFile = TempFilePath::create();                                                                      
+                      
+     std::string path = dataFile->path;
+
+     int numCustomers = 100;
+     int numTransactions = 1000;
+     int numCustomerFeatures = 10;
+     int numTransactionFeatures = 18;
+
+     registerNNFunctions(numCustomerFeatures + numTransactionFeatures)
+     
+     // Retrieve the customer and transaction data
+     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
+     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
+     
+     auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
+
+     auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
+    
+                         
+     auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({customerRowVector})
+                         .filter("customer_id > 50")
+                         .hashJoin({"customer_id"},
+                         {"trans_customer_id"},
+                         exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({transactionRowVector})
+                         .planNode(),
+                         "",
+                         {"customer_id", "customer_features", "transaction_id", "transaction_features"})
+                         .project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
+                         .project({"tid", "sigmoid(mat_vector_add3(mat_mul3(relu(mat_vector_add2(mat_mul2(relu(mat_vector_add1(mat_mul1(features))))))))) AS label"})
+                         .planNode();
+   
+ 
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+    auto results = exec::test::AssertQueryBuilder(myPlan).copyResults(pool_.get());
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+    //std::cout << "Results:" << results->toString() << std::endl;
+    std::cout << results->toString(0, results->size()) << std::endl;
+   
+    std::cout << "Time for Fraudulent Transaction Detection with Has Join and Neural Network (sec): " << std::endl;
+
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
+ 
+}
+
+
 void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
 
   std::cout << "Option is " << option << std::endl;
@@ -582,6 +714,7 @@ void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, i
       testingHashJoinWithPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
       testingHashJoinWithoutPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
       testingHashJoinWithPredictFilter(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      testingHashJoinWithNeuralNetwork(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
   }
 
   else
