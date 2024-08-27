@@ -664,7 +664,7 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
      int numTransactions = 1000;
      int numCustomerFeatures = 10;
      int numTransactionFeatures = 18;
-     numCols = numCustomerFeatures + numTransactionFeatures
+     numCols = numCustomerFeatures + numTransactionFeatures;
 
      //registerNNFunctions(numCustomerFeatures + numTransactionFeatures);
      
