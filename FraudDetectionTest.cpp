@@ -167,7 +167,9 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
 
 void FraudDetectionTest::registerNNFunctions(int numCols) {
 
+  RandomGenerator randomGenerator = RandomGenerator(-1, 1, 0);
   randomGenerator.setFloatRange(-1, 1);
+
   std::vector<std::vector<float>> itemNNweight1 =
       randomGenerator.genFloat2dVector(numCols, 32);
   auto itemNNweight1Vector = maker.arrayVector<float>(itemNNweight1, REAL());
