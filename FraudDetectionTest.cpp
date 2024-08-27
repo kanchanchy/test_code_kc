@@ -96,6 +96,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   void testingNestedLoopJoinWithoutPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingHashJoinWithPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingHashJoinWithoutPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
+  void testingHashJoinWithPredictFilter(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
 
   ArrayVectorPtr parseCSVFile(VectorMaker & maker, std::string filePath, int numRows, int numCols);
 
@@ -134,6 +135,13 @@ class FraudDetectionTest : public HiveConnectorTestBase {
 };
 
 void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCols) {
+
+  std::cout <<"To register function for TreePrediction" << std::endl;
+
+  exec::registerVectorFunction(
+      "decision_tree_predict",
+      TreePrediction::signatures(),
+      std::make_unique<TreePrediction>(0, "resources/model/fraud_xgboost_10_8/0.txt", 28, false));
 
   std::cout << "To register function for XGBoost Prediction" << std::endl;
 
@@ -355,7 +363,7 @@ void FraudDetectionTest::testingNestedLoopJoinWithPredicatePush(int numDataSplit
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
-    std::cout << results->toString(0, results->size()) << std::endl;
+    //std::cout << results->toString(0, results->size()) << std::endl;
    
     std::cout << "Time for Fraudulent Transaction Detection with Nested Noop Join and Predicate Push (sec): " << std::endl;
 
@@ -403,7 +411,7 @@ void FraudDetectionTest::testingNestedLoopJoinWithoutPredicatePush(int numDataSp
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
-    std::cout << results->toString(0, results->size()) << std::endl;
+    //std::cout << results->toString(0, results->size()) << std::endl;
    
     std::cout << "Time for Fraudulent Transaction Detection with Nested Noop Join and without Predicate Push (sec): " << std::endl;
 
@@ -453,7 +461,7 @@ void FraudDetectionTest::testingHashJoinWithPredicatePush(int numDataSplits, int
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
-    std::cout << results->toString(0, results->size()) << std::endl;
+    //std::cout << results->toString(0, results->size()) << std::endl;
    
     std::cout << "Time for Fraudulent Transaction Detection with Has Join and Predicate Push (sec): " << std::endl;
 
@@ -503,9 +511,60 @@ void FraudDetectionTest::testingHashJoinWithoutPredicatePush(int numDataSplits, 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
-    std::cout << results->toString(0, results->size()) << std::endl;
+    //std::cout << results->toString(0, results->size()) << std::endl;
    
     std::cout << "Time for Fraudulent Transaction Detection with Has Join and without Predicate Push (sec): " << std::endl;
+
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
+ 
+}
+
+
+void FraudDetectionTest::testingHashJoinWithPredictFilter(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
+
+     auto dataFile = TempFilePath::create();                                                                      
+                      
+     std::string path = dataFile->path;
+
+     int numCustomers = 100;
+     int numTransactions = 1000;
+     int numCustomerFeatures = 10;
+     int numTransactionFeatures = 18;
+     
+     // Retrieve the customer and transaction data
+     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
+     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
+     
+     auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
+
+     auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
+    
+                         
+     auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({customerRowVector})
+                         .filter("customer_id > 50")
+                         .hashJoin({"customer_id"},
+                         {"trans_customer_id"},
+                         exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({transactionRowVector})
+                         .planNode(),
+                         "",
+                         {"customer_id", "customer_features", "transaction_id", "transaction_features"})
+                         .project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
+                         .filter("decision_tree_predict(features) > 0.5")
+                         .project({"tid", "xgboost_predict(features) AS label"})
+                         .planNode();
+   
+ 
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+    auto results = exec::test::AssertQueryBuilder(myPlan).copyResults(pool_.get());
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+    //std::cout << "Results:" << results->toString() << std::endl;
+    //std::cout << results->toString(0, results->size()) << std::endl;
+   
+    std::cout << "Time for Fraudulent Transaction Detection with Has Join and Predit Filter (sec): " << std::endl;
 
     std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
  
@@ -522,6 +581,7 @@ void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, i
       testingNestedLoopJoinWithoutPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
       testingHashJoinWithPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
       testingHashJoinWithoutPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      testingHashJoinWithPredictFilter(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
   }
 
   else
