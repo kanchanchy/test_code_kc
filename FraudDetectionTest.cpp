@@ -90,7 +90,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   ~FraudDetectionTest() {}
 
   void registerFunctions(std::string modelFilePath="resources/model/fraud_xgboost_1600_8", int numCols = 28);
-  //void registerNNFunctions(int numCols);
+  void registerNNFunctions(int numCols);
   void run( int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   
   RowVectorPtr getCustomerData(int numCustomers, int numCustomerFeatures);
@@ -164,7 +164,7 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
 
 }
 
-/*
+
 void FraudDetectionTest::registerNNFunctions(int numCols) {
 
   randomGenerator.setFloatRange(-1, 1);
@@ -238,9 +238,9 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
       "relu", Relu::signatures(), std::make_unique<Relu>());
 
   exec::registerVectorFunction(
-      "sigmoid", Sigmoid::signatures(), std::make_unique<Sigmoid>());
+      "softmax", Softmax::signatures(), std::make_unique<Softmax>());
 
-}*/
+}
 
 
 ArrayVectorPtr FraudDetectionTest::parseCSVFile(VectorMaker & maker, std::string filePath, int numRows, int numCols) {
@@ -666,14 +666,14 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
      int numTransactionFeatures = 18;
      numCols = numCustomerFeatures + numTransactionFeatures;
 
-     //registerNNFunctions(numCustomerFeatures + numTransactionFeatures);
+     registerNNFunctions(numCustomerFeatures + numTransactionFeatures);
      
      // Retrieve the customer and transaction data
      RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
      RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
-
+     /*
      RandomGenerator randomGenerator = RandomGenerator(-1, 1, 0);
      randomGenerator.setFloatRange(-1, 1);
 
@@ -708,7 +708,7 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
                             itemNNweight3Vector->elements()->values()->asMutable<float>(), 
                             itemNNBias3Vector->elements()->values()->asMutable<float>(),
                             NNBuilder::SOFTMAX)
-                            .build();
+                            .build();*/
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
     
@@ -725,8 +725,8 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
                          {"customer_id", "customer_features", "transaction_id", "transaction_features"})
                          .project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
                          .filter("xgboost_predict(features) > 0.5")
-                         //.project({"tid", "sigmoid(mat_vector_add3(mat_mul3(relu(mat_vector_add2(mat_mul2(relu(mat_vector_add1(mat_mul1(features))))))))) AS label"})
-                         .project({"tid", fmt::format(compute, "features") + " AS labels"})
+                         .project({"tid", "softmax(mat_vector_add3(mat_mul3(relu(mat_vector_add2(mat_mul2(relu(mat_vector_add1(mat_mul1(features))))))))) AS label"})
+                         //.project({"tid", fmt::format(compute, "features") + " AS label"})
                          .planNode();
    
  
