@@ -674,7 +674,9 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
+     RandomGenerator randomGenerator = RandomGenerator(-1, 1, 0);
      randomGenerator.setFloatRange(-1, 1);
+
      std::vector<std::vector<float>> itemNNweight1 = randomGenerator.genFloat2dVector(numCols, 32);
      auto itemNNweight1Vector = maker.arrayVector<float>(itemNNweight1, REAL());
      
@@ -705,7 +707,7 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
                             .denseLayer(16 ,2,
                             itemNNweight3Vector->elements()->values()->asMutable<float>(), 
                             itemNNBias3Vector->elements()->values()->asMutable<float>(),
-                            NNBuilder::SIGMOID)
+                            NNBuilder::SOFTMAX)
                             .build();
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
