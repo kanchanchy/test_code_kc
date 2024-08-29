@@ -468,6 +468,11 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
     int index = 0;
     
     std::string line;
+
+    // Ignore the first line (header)
+    if (std::getline(file, line)) {
+        std::cout << "Ignoring header: " << line << std::endl;
+    }
     
     while (std::getline(file, line)) { // Read a line from the file
 
@@ -482,7 +487,7 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
 	    int colIndex = 0;
 
         while (std::getline(iss, numberStr, ',')) { // Read each number separated by comma
-            std::cout << colIndex << ": " << numberStr << std::endl;
+            //std::cout << colIndex << ": " << numberStr << std::endl;
             if (colIndex == 0) {
                 oOrderId.push_back(std::stoi(numberStr));
             }
