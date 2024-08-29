@@ -90,7 +90,7 @@ class IsWeekend : public MLFunction {
     for (int i = 0; i < rows.size(); i++) {
       std::string inputStr = std::string(inputStrings->valueAt(i));
 
-      struct std::tm t;
+      struct std::tm t = {};
       /*struct tm tm;
       tm.tm_sec = 0;
       tm.tm_min = 0;
@@ -120,6 +120,7 @@ class IsWeekend : public MLFunction {
           }*/
 
           // Convert tm struct to time_t (timestamp)
+          t.tm_isdst = -1;
           time_t tt = mktime(&t);
     
           // Cast time_t to int64_t
