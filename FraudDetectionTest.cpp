@@ -89,7 +89,7 @@ class IsWeekend : public MLFunction {
     for (int i = 0; i < rows.size(); i++) {
       std::string inputStr = std::string(inputStrings->valueAt(i));
 
-      struct std::tm t = {0};
+      struct std::tm t;
       /*struct tm tm;
       tm.tm_sec = 0;
       tm.tm_min = 0;
@@ -105,7 +105,7 @@ class IsWeekend : public MLFunction {
             // Parse the input date string
           std::istringstream ss(inputStr);
           //ss >> std::get_time(&t, "%m/%d/%Y"); // Format: month/day/year
-          ss >> std::get_time(&t, "%Y-%m-%d"); // Format: month/day/year
+          ss >> std::get_time(&t, "%Y-%m-%d"); // Format: year-month-day
 
           // Check if parsing was successful
           if (ss.fail()) {
