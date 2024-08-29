@@ -53,6 +53,8 @@
 #include "velox/expression/VectorFunction.h"
 #include "velox/vector/ComplexVector.h"
 #include "velox/vector/FlatVector.h"
+#include <ctime>
+#include <iomanip>
 
 using namespace std;
 using namespace ml;
@@ -61,6 +63,79 @@ using namespace facebook::velox::test;
 using namespace facebook::velox::exec;
 using namespace facebook::velox::exec::test;
 using namespace facebook::velox::core;
+
+
+
+class IsWeekend : public MLFunction {
+ public:
+
+  void apply(
+      const SelectivityVector& rows,
+      std::vector<VectorPtr>& args,
+      const TypePtr& type,
+      exec::EvalCtx& context,
+      VectorPtr& output) const override {
+    BaseVector::ensureWritable(rows, type, context.pool(), output);
+
+    // Decoder is required to handle address error, reference code:
+    // ArrayIntersectExcept.cpp
+    //BaseVector* data = args[0].get();
+
+    auto inputStrings = args[0]->as<FlatVector<StringView>>();
+    //std::string* inputValues = inputStrings->values()->asMutable<std::string>();
+
+    std::vector<int64_t> results;
+
+    for (int i = 0; i < rows.size(); i++) {
+      auto inputStr = inputStrings->valueAt(i);
+
+      struct tm tm = {0};
+    
+      // Parse the input date string
+      std::istringstream ss(inputStr);
+      ss >> std::get_time(&tm, "%m/%d/%Y"); // Format: month/day/year
+
+      // Check if parsing was successful
+      if (ss.fail()) {
+          std::cerr << "Failed to parse date string" << std::endl;
+          exit(1);
+      }
+
+      // Convert tm struct to time_t (timestamp)
+      time_t time = mktime(&tm);
+    
+      // Cast time_t to int64_t
+      int64_t timestamp = static_cast<int64_t>(time);
+
+      results.push_back(timestamp);
+    }
+
+    VectorMaker maker{context.pool()};
+    output = maker.flatVector<int64_t>(results);
+  }
+
+  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
+    return {exec::FunctionSignatureBuilder()
+                .argumentType("VARCHAR")
+                .returnType("BIGINT")
+                .build()};
+  }
+
+  static std::string getName() {
+    return "is_weekend";
+  }
+
+  float* getTensor() const override {
+    // TODO: need to implement
+    return nullptr;
+  }
+
+  CostEstimate getCost(std::vector<int> inputDims) {
+    // TODO: need to implement
+    return CostEstimate(0, inputDims[0], inputDims[1]);
+  }
+
+};
 
 
 
@@ -341,6 +416,76 @@ RowVectorPtr FraudDetectionTest::writeDataToFile(std::string csvFilePath, int nu
 
     return inputRowVector;
 
+}
+
+
+RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
+
+    std::ifstream file(filePath.c_str());
+
+    if (file.fail()) {
+
+        std::cerr << "Data File:" << filePath << " => Read Error" << std::endl;
+        exit(1);
+
+    }
+
+    std::vector<int64_t> oOrderId;
+    std::vector<int64_t> oCustomerSk;
+    std::vector<StringView> oWeekday;
+    std::vector<StringView> oDate;
+
+    
+    int index = 0;
+    
+    std::string line;
+    
+    while (std::getline(file, line)) { // Read a line from the file
+
+        //std::vector<float> curRow(numCols);
+	
+        std::getline(file, line);
+
+        std::istringstream iss(line); // Create an input string stream from the line
+
+        std::string numberStr;
+
+	    int colIndex = 0;
+
+        while (std::getline(iss, numberStr, ',')) { // Read each number separated by comma
+            if (colIndex == 0) {
+                oOrderId.push_back(std::stoll(numberStr));
+            }
+            else if (colIndex == 1) {
+                oCustomerSk.push_back(std::stoll(numberStr));
+            }
+            else if (colIndex == 2) {
+                oWeekday.push_back(numberStr);
+            }
+            else if (colIndex == 3) {
+                oDate.push_back(numberStr);
+            }
+
+	        colIndex ++;
+
+        }
+
+	    //inputArrayVector.push_back(curRow);
+    }
+
+    file.close();
+
+     // Prepare Customer table
+     auto oOrderIdVector = maker.flatVector<int64_t>(oOrderId);
+     auto oCustomerSkVector = maker.flatVector<int64_t>(oCustomerSk);
+     auto oWeekdayVector = maker.flatVector<StringView>(oWeekday);
+     auto oDateVector = maker.flatVector<StringView>(oDate);
+     auto orderRowVector = maker.rowVector(
+         {"o_order_id", "o_customer_sk", "o_weekday", "o_date"},
+         {oOrderIdVector, oCustomerSkVector, oWeekdayVector, oDateVector}
+     );
+
+     return orderRowVector;
 }
 
 
