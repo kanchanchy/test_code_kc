@@ -81,13 +81,13 @@ class IsWeekend : public MLFunction {
     // ArrayIntersectExcept.cpp
     //BaseVector* data = args[0].get();
 
-    auto inputStrings = args[0]->as<FlatVector<std::string>>();
+    auto inputStrings = args[0]->as<FlatVector<StringView>>();
     //std::string* inputValues = inputStrings->values()->asMutable<std::string>();
 
     std::vector<int64_t> results;
 
     for (int i = 0; i < rows.size(); i++) {
-      auto inputStr = inputStrings->valueAt(i);
+      std::string inputStr = std::string(inputStrings->valueAt(i));
 
       struct tm tm;
       tm.tm_sec = 0;
@@ -253,11 +253,15 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
       "concat_vectors",
       Concat::signatures(),
       std::make_unique<Concat>(10, 18));
+
+  std::cout << "To register function for Weekend" << std::endl;
   
   exec::registerVectorFunction(
       "is_weekend",
       IsWeekend::signatures(),
       std::make_unique<IsWeekend>());
+
+  std::cout << "Completed registering function for Weekend" << std::endl;
 
 }
 
