@@ -100,23 +100,29 @@ class IsWeekend : public MLFunction {
       tm.tm_yday = 0;
       tm.tm_isdst = -1; // Daylight saving time flag (-1 means not set by user)
     
-      // Parse the input date string
-      std::istringstream ss(inputStr);
-      ss >> std::get_time(&tm, "%m/%d/%Y"); // Format: month/day/year
+      try {
+            // Parse the input date string
+          std::istringstream ss(inputStr);
+          ss >> std::get_time(&tm, "%m/%d/%Y"); // Format: month/day/year
 
-      // Check if parsing was successful
-      if (ss.fail()) {
-          std::cerr << "Failed to parse date string" << std::endl;
-          exit(1);
+          // Check if parsing was successful
+          if (ss.fail()) {
+              std::cerr << "Failed to parse date string" << std::endl;
+              exit(1);
+          }
+
+          // Convert tm struct to time_t (timestamp)
+          time_t time = mktime(&tm);
+    
+          // Cast time_t to int64_t
+          int64_t timestamp = static_cast<int64_t>(time);
+          results.push_back(timestamp);
+      }
+      catch (const std::exception& e) {
+          LOG(ERROR) << "Error processing row " << row << ": " << e.what();
+          results.push_back(0);
       }
 
-      // Convert tm struct to time_t (timestamp)
-      time_t time = mktime(&tm);
-    
-      // Cast time_t to int64_t
-      int64_t timestamp = static_cast<int64_t>(time);
-
-      results.push_back(timestamp);
     }
 
     VectorMaker maker{context.pool()};
