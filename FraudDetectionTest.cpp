@@ -997,7 +997,7 @@ DEFINE_int32(numRows, 10, "number of tuples in the dataset to be predicted");
 DEFINE_int32(numCols, 10, "number of columns in the dataset to be predicted");
 DEFINE_string(dataFilePath, "resources/data/creditcard_test.csv", "path to input dataset to be predicted");
 DEFINE_string(modelFilePath, "resources/model/fraud_xgboost_1600_8", "path to the model used for prediction");
-DEFINE_string(orderDataFilePath, "resources/order.csv", "path to input order dataset");
+DEFINE_string(orderDataFilePath, "resources/data/order.csv", "path to input order dataset");
 
 int main(int argc, char** argv) {
 
