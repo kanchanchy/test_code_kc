@@ -104,12 +104,14 @@ class IsWeekend : public MLFunction {
       try {
             // Parse the input date string
           std::istringstream ss(inputStr);
-          //ss >> std::get_time(&tm, "%m/%d/%Y"); // Format: month/day/year
-          ss >> std::get_time(&t, "%Y-%m-%d"); // Format: month/day/year
+          ss >> std::get_time(&t, "%m/%d/%Y"); // Format: month/day/year
+          //ss >> std::get_time(&t, "%Y-%m-%d"); // Format: month/day/year
 
           // Check if parsing was successful
           if (ss.fail()) {
-              std::cerr << "Failed to parse date string " << inputStr << std::endl;
+              if (i < 5) {
+                    std::cerr << "Failed to parse date string " << inputStr << std::endl;
+              }
               results.push_back(0);
               continue;
               //exit(1);
@@ -489,7 +491,10 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
 	    int colIndex = 0;
 
         while (std::getline(iss, numberStr, ',')) { // Read each number separated by comma
-            //std::cout << colIndex << ": " << numberStr << std::endl;
+            if (index < 5) {
+                std::cout << colIndex << ": " << numberStr << std::endl;
+            }
+            index ++;
             if (colIndex == 0) {
                 oOrderId.push_back(std::stoi(numberStr));
             }
