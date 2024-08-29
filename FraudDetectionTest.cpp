@@ -467,10 +467,10 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
                 oCustomerSk.push_back(std::stoll(numberStr));
             }
             else if (colIndex == 2) {
-                oWeekday.push_back(numberStr);
+                oWeekday.push_back(StringView(numberStr));
             }
             else if (colIndex == 3) {
-                oDate.push_back(numberStr);
+                oDate.push_back(StringView(numberStr));
             }
 
 	        colIndex ++;
