@@ -170,6 +170,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   
   RowVectorPtr getCustomerData(int numCustomers, int numCustomerFeatures);
   RowVectorPtr getTransactionData(int numTransactions, int numTransactionFeatures, int numCustomers);
+  RowVectorPtr getOrderData(std::string filePath);
   
   void testingNestedLoopJoinWithPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingNestedLoopJoinWithoutPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
@@ -177,6 +178,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   void testingHashJoinWithoutPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingHashJoinWithPredictFilter(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingHashJoinWithNeuralNetwork(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
+  void testingWithRealData(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
 
   ArrayVectorPtr parseCSVFile(VectorMaker & maker, std::string filePath, int numRows, int numCols);
 
@@ -236,6 +238,11 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
       "concat_vectors",
       Concat::signatures(),
       std::make_unique<Concat>(10, 18));
+  
+  exec::registerVectorFunction(
+      "is_weekend",
+      IsWeekend::signatures(),
+      std::make_unique<IsWeekend>());
 
 }
 
@@ -892,18 +899,66 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
 }
 
 
+void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
+
+     auto dataFile = TempFilePath::create();                                                                      
+                      
+     std::string path = dataFile->path;
+
+     RowVectorPtr orderRowVector = getOrderData(dataFilePath);
+
+     /*
+     int numCustomers = 100;
+     int numTransactions = 1000;
+     int numCustomerFeatures = 10;
+     int numTransactionFeatures = 18;
+     
+     // Retrieve the customer and transaction data
+     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
+     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
+     */
+     auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
+
+     auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
+    
+                         
+     auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({orderRowVector})
+                         //.filter("customer_id > 50")
+                         //.project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
+                         //.filter("decision_tree_predict(features) > 0.5")
+                         .project({"o_order_id", "o_customer_sk", "o_weekday", "is_weekend(o_data) AS weekend"})
+                         .planNode();
+   
+ 
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+    auto results = exec::test::AssertQueryBuilder(myPlan).copyResults(pool_.get());
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+    //std::cout << "Results:" << results->toString() << std::endl;
+    std::cout << results->toString(0, 5) << std::endl;
+   
+    std::cout << "Time for Executing with Real Data (sec): " << std::endl;
+
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
+ 
+}
+
+
 void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
 
   std::cout << "Option is " << option << std::endl;
   registerFunctions(modelFilePath, numCols);
 
   if (option == 0) {
-      testingNestedLoopJoinWithPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
-      testingNestedLoopJoinWithoutPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
-      testingHashJoinWithPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
-      testingHashJoinWithoutPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
-      testingHashJoinWithPredictFilter(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
-      testingHashJoinWithNeuralNetwork(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      //testingNestedLoopJoinWithPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      //testingNestedLoopJoinWithoutPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      //testingHashJoinWithPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      //testingHashJoinWithoutPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      //testingHashJoinWithPredictFilter(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      //testingHashJoinWithNeuralNetwork(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      testingWithRealData(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
   }
 
   else
