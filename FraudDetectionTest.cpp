@@ -1014,7 +1014,7 @@ int main(int argc, char** argv) {
   int numCols = FLAGS_numCols;
   std::string dataFilePath = FLAGS_dataFilePath;
   std::string modelFilePath = FLAGS_modelFilePath;
-  std::string orderDataFilePath = FLAGS_orderDataFilePath
+  std::string orderDataFilePath = FLAGS_orderDataFilePath;
 
   FraudDetectionTest demo;
 
