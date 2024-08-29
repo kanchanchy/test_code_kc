@@ -482,6 +482,7 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
 	    int colIndex = 0;
 
         while (std::getline(iss, numberStr, ',')) { // Read each number separated by comma
+            std::cout << colIndex << ": " << numberStr << std::endl;
             if (colIndex == 0) {
                 oOrderId.push_back(std::stoi(numberStr));
             }
