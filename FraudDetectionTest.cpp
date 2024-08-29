@@ -89,7 +89,16 @@ class IsWeekend : public MLFunction {
     for (int i = 0; i < rows.size(); i++) {
       auto inputStr = inputStrings->valueAt(i);
 
-      struct tm tm = {0};
+      struct tm tm;
+      tm.tm_sec = 0;
+      tm.tm_min = 0;
+      tm.tm_hour = 0;
+      tm.tm_mday = 0;
+      tm.tm_mon = 0;
+      tm.tm_year = 0;
+      tm.tm_wday = 0;
+      tm.tm_yday = 0;
+      tm.tm_isdst = -1; // Daylight saving time flag (-1 means not set by user)
     
       // Parse the input date string
       std::istringstream ss(inputStr);
