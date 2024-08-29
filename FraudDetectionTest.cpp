@@ -107,7 +107,9 @@ class IsWeekend : public MLFunction {
 
           // Check if parsing was successful
           if (ss.fail()) {
-              std::cerr << "Failed to parse date string" << inputStr << std::endl;
+              std::cerr << "Failed to parse date string " << inputStr << std::endl;
+              results.push_back(0);
+              continue;
               //exit(1);
           }
 
@@ -977,7 +979,7 @@ void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, i
       //testingHashJoinWithoutPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
       //testingHashJoinWithPredictFilter(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
       //testingHashJoinWithNeuralNetwork(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
-      testingWithRealData(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      testingWithRealData(numDataSplits, dataBatchSize, numRows, numCols, "resources/order.csv", modelFilePath);
   }
 
   else
