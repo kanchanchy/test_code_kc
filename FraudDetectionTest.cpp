@@ -106,10 +106,10 @@ class IsWeekend : public MLFunction {
           ss >> std::get_time(&tm, "%m/%d/%Y"); // Format: month/day/year
 
           // Check if parsing was successful
-          if (ss.fail()) {
+          /*if (ss.fail()) {
               std::cerr << "Failed to parse date string" << std::endl;
               exit(1);
-          }
+          }*/
 
           // Convert tm struct to time_t (timestamp)
           time_t time = mktime(&tm);
