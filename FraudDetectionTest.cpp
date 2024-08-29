@@ -107,7 +107,7 @@ class IsWeekend : public MLFunction {
           //std::istringstream ss(inputStr);
           //ss >> std::get_time(&t, "%m/%d/%Y"); // Format: month/day/year
           //ss >> std::get_time(&t, "%Y-%m-%d"); // Format: year-month-day
-          strptime(inputStr, "%Y-%m-%d", &t);
+          strptime(inputStr.c_str(), "%Y-%m-%d", &t);
 
           // Check if parsing was successful
           /*if (ss.fail()) {
