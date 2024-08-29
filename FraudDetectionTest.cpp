@@ -89,7 +89,7 @@ class IsWeekend : public MLFunction {
     for (int i = 0; i < rows.size(); i++) {
       std::string inputStr = std::string(inputStrings->valueAt(i));
 
-      std::tm t{};
+      struct std::tm t = {0};
       /*struct tm tm;
       tm.tm_sec = 0;
       tm.tm_min = 0;
