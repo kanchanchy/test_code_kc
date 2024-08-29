@@ -89,7 +89,8 @@ class IsWeekend : public MLFunction {
     for (int i = 0; i < rows.size(); i++) {
       std::string inputStr = std::string(inputStrings->valueAt(i));
 
-      struct tm tm;
+      std::tm t{};
+      /*struct tm tm;
       tm.tm_sec = 0;
       tm.tm_min = 0;
       tm.tm_hour = 0;
@@ -98,12 +99,13 @@ class IsWeekend : public MLFunction {
       tm.tm_year = 0;
       tm.tm_wday = 0;
       tm.tm_yday = 0;
-      tm.tm_isdst = -1; // Daylight saving time flag (-1 means not set by user)
+      tm.tm_isdst = -1; // Daylight saving time flag (-1 means not set by user)*/
     
       try {
             // Parse the input date string
           std::istringstream ss(inputStr);
-          ss >> std::get_time(&tm, "%m/%d/%Y"); // Format: month/day/year
+          //ss >> std::get_time(&tm, "%m/%d/%Y"); // Format: month/day/year
+          ss >> std::get_time(&t, "%Y-%m-%d"); // Format: month/day/year
 
           // Check if parsing was successful
           if (ss.fail()) {
@@ -114,7 +116,7 @@ class IsWeekend : public MLFunction {
           }
 
           // Convert tm struct to time_t (timestamp)
-          time_t time = mktime(&tm);
+          time_t time = mktime(&t);
     
           // Cast time_t to int64_t
           int64_t timestamp = static_cast<int64_t>(time);
