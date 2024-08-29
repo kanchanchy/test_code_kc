@@ -121,7 +121,8 @@ class IsWeekend : public MLFunction {
           results.push_back(timestamp);
       }
       catch (const std::exception& e) {
-          LOG(ERROR) << "Error processing row " << inputStr << ": " << e.what();
+          //LOG(ERROR) << "Error processing row " << inputStr << ": " << e.what();
+          LOG(ERROR) << "Error processing row " << inputStr << std::endl;
           results.push_back(0);
       }
 
