@@ -183,7 +183,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
 
   void registerFunctions(std::string modelFilePath="resources/model/fraud_xgboost_1600_8", int numCols = 28);
   void registerNNFunctions(int numCols);
-  void run( int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
+  void run( int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath, std::string orderDataFilePath);
   
   RowVectorPtr getCustomerData(int numCustomers, int numCustomerFeatures);
   RowVectorPtr getTransactionData(int numTransactions, int numTransactionFeatures, int numCustomers);
@@ -967,7 +967,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 }
 
 
-void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
+void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath, std::string orderDataFilePath) {
 
   std::cout << "Option is " << option << std::endl;
   registerFunctions(modelFilePath, numCols);
@@ -979,7 +979,7 @@ void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, i
       //testingHashJoinWithoutPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
       //testingHashJoinWithPredictFilter(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
       //testingHashJoinWithNeuralNetwork(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
-      testingWithRealData(numDataSplits, dataBatchSize, numRows, numCols, "resources/order.csv", modelFilePath);
+      testingWithRealData(numDataSplits, dataBatchSize, numRows, numCols, orderDataFilePath, modelFilePath);
   }
 
   else
@@ -997,6 +997,7 @@ DEFINE_int32(numRows, 10, "number of tuples in the dataset to be predicted");
 DEFINE_int32(numCols, 10, "number of columns in the dataset to be predicted");
 DEFINE_string(dataFilePath, "resources/data/creditcard_test.csv", "path to input dataset to be predicted");
 DEFINE_string(modelFilePath, "resources/model/fraud_xgboost_1600_8", "path to the model used for prediction");
+DEFINE_string(orderDataFilePath, "resources/order.csv", "path to input order dataset");
 
 int main(int argc, char** argv) {
 
@@ -1013,13 +1014,14 @@ int main(int argc, char** argv) {
   int numCols = FLAGS_numCols;
   std::string dataFilePath = FLAGS_dataFilePath;
   std::string modelFilePath = FLAGS_modelFilePath;
+  std::string orderDataFilePath = FLAGS_orderDataFilePath
 
   FraudDetectionTest demo;
 
-  std::cout << fmt::format("Option: {}, numDataSplits: {}, numTreeSplits: {}, numTreeRows: {}, dataBatchSize: {}, numRows: {}, numCols: {}, dataFilePath: {}, modelFilePath: {}", 
-                           option, numDataSplits, numTreeSplits, numTreeRows, numRows, numCols, dataBatchSize, dataFilePath, modelFilePath) 
+  std::cout << fmt::format("Option: {}, numDataSplits: {}, numTreeSplits: {}, numTreeRows: {}, dataBatchSize: {}, numRows: {}, numCols: {}, dataFilePath: {}, modelFilePath: {}, orderDataFilePath: {}", 
+                           option, numDataSplits, numTreeSplits, numTreeRows, numRows, numCols, dataBatchSize, dataFilePath, modelFilePath, orderDataFilePath) 
       << std::endl;
 
-  demo.run(option, numDataSplits, numTreeSplits, numTreeRows, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+  demo.run(option, numDataSplits, numTreeSplits, numTreeRows, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath, orderDataFilePath);
 
 }
