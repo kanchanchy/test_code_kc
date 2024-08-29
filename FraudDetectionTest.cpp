@@ -55,6 +55,7 @@
 #include "velox/vector/FlatVector.h"
 #include <ctime>
 #include <iomanip>
+#include <time.h>
 
 using namespace std;
 using namespace ml;
@@ -103,25 +104,26 @@ class IsWeekend : public MLFunction {
     
       try {
             // Parse the input date string
-          std::istringstream ss(inputStr);
+          //std::istringstream ss(inputStr);
           //ss >> std::get_time(&t, "%m/%d/%Y"); // Format: month/day/year
-          ss >> std::get_time(&t, "%Y-%m-%d"); // Format: year-month-day
+          //ss >> std::get_time(&t, "%Y-%m-%d"); // Format: year-month-day
+          strptime(inputStr, "%Y-%m-%d", &t);
 
           // Check if parsing was successful
-          if (ss.fail()) {
+          /*if (ss.fail()) {
               if (i < 5) {
                     std::cerr << "Failed to parse date string " << inputStr << std::endl;
               }
               results.push_back(0);
               continue;
               //exit(1);
-          }
+          }*/
 
           // Convert tm struct to time_t (timestamp)
-          time_t time = mktime(&t);
+          time_t tt = mktime(&t);
     
           // Cast time_t to int64_t
-          int64_t timestamp = static_cast<int64_t>(time);
+          int64_t timestamp = static_cast<int64_t>(tt);
           results.push_back(timestamp);
       }
       catch (const std::exception& e) {
@@ -494,7 +496,6 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
             if (index < 5) {
                 std::cout << colIndex << ": " << numberStr << std::endl;
             }
-            index ++;
             if (colIndex == 0) {
                 oOrderId.push_back(std::stoi(numberStr));
             }
@@ -513,6 +514,7 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
         }
 
 	    //inputArrayVector.push_back(curRow);
+        index ++;
     }
 
     file.close();
