@@ -87,64 +87,40 @@ class IsWeekend : public MLFunction {
     //std::string* inputValues = inputStrings->values()->asMutable<std::string>();
 
     std::vector<int64_t> results;
-    const char* dateFormat = "%Y-%m-%d %H:%M:%S";
+    const char* dateFormat = "%Y-%m-%d";
 
     for (int i = 0; i < rows.size(); i++) {
       std::string inputStr = std::string(inputStrings->valueAt(i));// + " 00:00:00";
 
       struct std::tm t;
-      /*struct tm tm;
-      tm.tm_sec = 0;
-      tm.tm_min = 0;
-      tm.tm_hour = 0;
-      tm.tm_mday = 0;
-      tm.tm_mon = 0;
-      tm.tm_year = 0;
-      tm.tm_wday = 0;
-      tm.tm_yday = 0;
-      tm.tm_isdst = -1; // Daylight saving time flag (-1 means not set by user)*/
     
       try {
-            // Parse the input date string
-          //std::istringstream ss(inputStr);
-          //ss >> std::get_time(&t, "%m/%d/%Y"); // Format: month/day/year
-          //ss >> std::get_time(&t, "%Y-%m-%d"); // Format: year-month-day
-          //strptime(inputStr.c_str(), "%Y-%m-%d", &t);
-          // Parse the input date string into the tm structure
-          if (strptime(inputStr.c_str(), dateFormat, &t) == nullptr) {
-              if (i < 5) {
-                  std::cerr << "Error parsing date string " << inputStr << std::endl;
-              }
-          }
-
-          // Print the parsed values for debugging
-          if (i < 5) {
-              std::cout << "Year: " << t.tm_year + 1900 << std::endl;
-              std::cout << "Month: " << t.tm_mon + 1 << std::endl;
-              std::cout << "Day: " << t.tm_mday << std::endl;
-          }
+          //strptime(inputStr.c_str(), dateFormat, &t)
+          std::istringstream ss(inputStr);
+          ss >> std::get_time(&t, dateFormat);
 
           // Check if parsing was successful
-          /*if (ss.fail()) {
+          if (ss.fail()) {
               if (i < 5) {
                     std::cerr << "Failed to parse date string " << inputStr << std::endl;
               }
               results.push_back(0);
               continue;
               //exit(1);
-          }*/
+          }
 
           // Convert tm struct to time_t (timestamp)
           //t.tm_isdst = -1;
           time_t tt = mktime(&t);
-    
           // Cast time_t to int64_t
           int64_t timestamp = static_cast<int64_t>(tt);
           results.push_back(timestamp);
       }
       catch (const std::exception& e) {
           //LOG(ERROR) << "Error processing row " << inputStr << ": " << e.what();
-          LOG(ERROR) << "Error processing row " << inputStr << std::endl;
+          if (i < 5) {
+              LOG(ERROR) << "Error processing row " << inputStr << std::endl;
+          }
           results.push_back(0);
       }
 
@@ -509,8 +485,12 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
 	    int colIndex = 0;
 
         while (std::getline(iss, numberStr, ',')) { // Read each number separated by comma
-            if (index < 5) {
+            /*if (index < 5) {
                 std::cout << colIndex << ": " << numberStr << std::endl;
+            }*/
+            // Trim leading and trailing whitespace from the input string (if any)
+            if (numberStr.size() >= 2 && numberStr.front() == '"' && numberStr.back() == '"') {
+                numberStr = numberStr.substr(1, numberStr.size() - 2);
             }
             if (colIndex == 0) {
                 oOrderId.push_back(std::stoi(numberStr));
@@ -522,10 +502,6 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
                 oWeekday.push_back(numberStr);
             }
             else if (colIndex == 3) {
-            // Trim leading and trailing whitespace from the input string (if any)
-                if (numberStr.size() >= 2 && numberStr.front() == '"' && numberStr.back() == '"') {
-                    numberStr = numberStr.substr(1, numberStr.size() - 2);
-                }
                 oDate.push_back(numberStr);
             }
 
