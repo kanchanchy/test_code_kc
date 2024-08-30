@@ -147,11 +147,12 @@ class TimeDiffInDays : public MLFunction {
     auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
     const int secondsInADay = 86400;
     for (int i = 0; i < rows.size(); i++) {
-        int64_t timestamp = inputTimes->valueAt(i);
-        // Calculate the number of days since Unix epoch
-        int64_t daysSinceEpoch = timestamp / secondsInADay;
-        int64_t differenceInSeconds = std::abs(inputTimes1 - inputTimes2);
+        int64_t timestamp1 = inputTimes1->valueAt(i);
+        int64_t timestamp2 = inputTimes2->valueAt(i);
+
+        int64_t differenceInSeconds = std::abs(timestamp1 - timestamp2);
         int64_t differenceInDays = differenceInSeconds / secondsInADay;
+
         results.push_back(differenceInDays);
     }
 
