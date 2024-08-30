@@ -189,7 +189,7 @@ class TimeDiffInDays : public MLFunction {
 class DateToTimestamp : public MLFunction {
  public:
  DateToTimestamp (const char* dateFormat_) {
-     dateFormat = dateFormat;
+     dateFormat = dateFormat_;
  }
 
   void apply(
