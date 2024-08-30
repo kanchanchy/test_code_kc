@@ -79,9 +79,30 @@ class IsWeekday : public MLFunction {
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
-    auto inputStrings = args[0]->as<FlatVector<StringView>>();
-
     std::vector<int> results;
+    auto inputTimes = args[0]->as<FlatVector<int64_t>>();
+    const int secondsInADay = 86400;
+    for (int i = 0; i < rows.size(); i++) {
+        int64_t timestamp = inputTimes->valueAt(i);
+        // Calculate the number of days since Unix epoch
+        int64_t daysSinceEpoch = timestamp / secondsInADay;
+
+        // Unix epoch (Jan 1, 1970) was a Thursday, so dayOfWeek for epoch is 4 (0=Sunday, 6=Saturday)
+        int dayOfWeekEpoch = 4;  // Thursday
+
+        // Calculate the current day of the week (0=Sunday, ..., 6=Saturday)
+        int dayOfWeek = (daysSinceEpoch + dayOfWeekEpoch) % 7;
+
+        // Return true if the day is Saturday (6) or Sunday (0)
+        if (dayOfWeek == 0 || dayOfWeek == 6) {
+            results.push_back(0);
+        }
+        else {
+            results.push_back(1);
+        }
+    }
+
+    /*auto inputStrings = args[0]->as<FlatVector<StringView>>();
     const char* dateFormat = "%Y-%m-%d";
 
     for (int i = 0; i < rows.size(); i++) {
@@ -103,7 +124,7 @@ class IsWeekday : public MLFunction {
           results.push_back(0);
       } else {
           results.push_back(1);
-      }
+      } */
 
     }
 
@@ -113,7 +134,7 @@ class IsWeekday : public MLFunction {
 
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
     return {exec::FunctionSignatureBuilder()
-                .argumentType("VARCHAR")
+                .argumentType("BIGINT")
                 .returnType("INTEGER")
                 .build()};
   }
@@ -1014,6 +1035,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .filter("o_date IS NOT NULL")
                          //.filter("is_weekday(o_date) = 1")
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp(o_date) AS o_timestamp"})
+                         .filter("is_weekday(o_timestamp) = 1")
                          .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as last_order_time"})
                          //.filter("customer_id > 50")
                          //.project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
