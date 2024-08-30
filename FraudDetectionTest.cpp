@@ -142,10 +142,16 @@ class TimeDiffInDays : public MLFunction {
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
+    if (args.size() < 2 || !args[0] || !args[1]) {
+        // Handle error
+        std::cerr << "Two arguments for time diff not found" << std::endl;
+        return;
+    }
+
     std::vector<int64_t> results;
     auto inputTimes1 = args[0]->as<FlatVector<int64_t>>();
     auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
-    const int secondsInADay = 86400;
+    int secondsInADay = 86400;
     for (int i = 0; i < rows.size(); i++) {
         int64_t timestamp1 = inputTimes1->valueAt(i);
         int64_t timestamp2 = inputTimes2->valueAt(i);
