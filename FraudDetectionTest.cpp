@@ -68,7 +68,7 @@ using namespace facebook::velox::core;
 
 
 
-class IsWeekend : public MLFunction {
+class IsWeekday : public MLFunction {
  public:
 
   void apply(
@@ -93,35 +93,28 @@ class IsWeekend : public MLFunction {
       std::string inputStr = std::string(inputStrings->valueAt(i));// + " 00:00:00";
 
       struct std::tm t;
-    
-      try {
-          //strptime(inputStr.c_str(), dateFormat, &t)
-          std::istringstream ss(inputStr);
-          ss >> std::get_time(&t, dateFormat);
+      //strptime(inputStr.c_str(), dateFormat, &t)
+      std::istringstream ss(inputStr);
+      ss >> std::get_time(&t, dateFormat);
 
-          // Check if parsing was successful
-          if (ss.fail()) {
-              if (i < 5) {
-                    std::cerr << "Failed to parse date string " << inputStr << std::endl;
-              }
-              results.push_back(0);
-              continue;
-              //exit(1);
-          }
-
-          // Convert tm struct to time_t (timestamp)
-          //t.tm_isdst = -1;
-          time_t tt = mktime(&t);
-          // Cast time_t to int64_t
-          int64_t timestamp = static_cast<int64_t>(tt);
-          results.push_back(timestamp);
-      }
-      catch (const std::exception& e) {
-          //LOG(ERROR) << "Error processing row " << inputStr << ": " << e.what();
-          if (i < 5) {
-              LOG(ERROR) << "Error processing row " << inputStr << std::endl;
-          }
+      // Check if parsing was successful
+      if (ss.fail()) {
+          std::cerr << "Failed to parse date string " << inputStr << std::endl;
           results.push_back(0);
+          continue;
+      }
+
+      // Convert tm struct to time_t (timestamp)
+      //time_t tt = mktime(&t);
+      // Cast time_t to int64_t
+      //int64_t timestamp = static_cast<int64_t>(tt);
+      //results.push_back(timestamp);
+
+      std::mktime(&t); // Normalize the tm structure
+      if (t.tm_wday == 0 || t.tm_wday == 6) { // Check if it's weekend
+          results.push_back(0);
+      } else {
+          results.push_back(1);
       }
 
     }
@@ -133,12 +126,12 @@ class IsWeekend : public MLFunction {
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
     return {exec::FunctionSignatureBuilder()
                 .argumentType("VARCHAR")
-                .returnType("BIGINT")
+                .returnType("INTEGER")
                 .build()};
   }
 
   static std::string getName() {
-    return "is_weekend";
+    return "is_weekday";
   }
 
   float* getTensor() const override {
@@ -258,9 +251,9 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
   std::cout << "To register function for Weekend" << std::endl;
   
   exec::registerVectorFunction(
-      "is_weekend",
-      IsWeekend::signatures(),
-      std::make_unique<IsWeekend>());
+      "is_weekday",
+      IsWeekday::signatures(),
+      std::make_unique<IsWeekday>());
 
   std::cout << "Completed registering function for Weekend" << std::endl;
 
@@ -960,7 +953,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.filter("customer_id > 50")
                          //.project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
                          //.filter("decision_tree_predict(features) > 0.5")
-                         .project({"o_order_id", "o_customer_sk", "o_weekday", "is_weekend(o_date) AS weekend"})
+                         .project({"o_order_id", "o_customer_sk", "o_weekday", "is_weekday(o_date) AS weekday"})
                          .planNode();
    
  
