@@ -1008,7 +1008,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
-                         .filter("is_weekday(o_date) == 1")
+                         //.filter("is_weekday(o_date) == 1")
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp(o_date) AS o_timestamp"})
                          .singleAggregation({"o_customer_sk"}, {"count(o_order_id)", "max(o_timestamp)"})
                          //.filter("customer_id > 50")
