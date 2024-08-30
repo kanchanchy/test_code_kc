@@ -726,12 +726,6 @@ RowVectorPtr FraudDetectionTest::getTransactionData(std::string filePath) {
 
     file.close();
 
-    std::vector<float> tAmount;
-        std::vector<int> tSender;
-        std::vector<std::string> tReceiver;
-        std::vector<int64_t> transactionId;
-        std::vector<std::string> tTime;
-
      // Prepare Customer table
      auto tAmountVector = maker.flatVector<float>(tAmount);
      auto tSenderVector = maker.flatVector<int>(tSender);
