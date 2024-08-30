@@ -56,6 +56,7 @@
 #include <ctime>
 #include <iomanip>
 #include <time.h>
+#include <locale>
 
 using namespace std;
 using namespace ml;
@@ -110,13 +111,17 @@ class IsWeekend : public MLFunction {
           //strptime(inputStr.c_str(), "%Y-%m-%d", &t);
           // Parse the input date string into the tm structure
           if (strptime(inputStr.c_str(), "%Y-%m-%d", &t) == nullptr) {
-              std::cerr << "Error parsing date string." << std::endl;
+              if (i < 5) {
+                  std::cerr << "Error parsing date string." << std::endl;
+              }
           }
 
           // Print the parsed values for debugging
-          std::cout << "Year: " << t.tm_year + 1900 << std::endl;
-          std::cout << "Month: " << t.tm_mon + 1 << std::endl;
-          std::cout << "Day: " << t.tm_mday << std::endl;
+          if (i < 5) {
+              std::cout << "Year: " << t.tm_year + 1900 << std::endl;
+              std::cout << "Month: " << t.tm_mon + 1 << std::endl;
+              std::cout << "Day: " << t.tm_mday << std::endl;
+          }
 
           // Check if parsing was successful
           /*if (ss.fail()) {
@@ -129,7 +134,7 @@ class IsWeekend : public MLFunction {
           }*/
 
           // Convert tm struct to time_t (timestamp)
-          t.tm_isdst = -1;
+          //t.tm_isdst = -1;
           time_t tt = mktime(&t);
     
           // Cast time_t to int64_t
@@ -516,6 +521,9 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
                 oWeekday.push_back(numberStr);
             }
             else if (colIndex == 3) {
+            // Trim leading and trailing whitespace from the input string (if any)
+                numberStr.erase(0, numberStr.find_first_not_of(' ')); // Trim leading spaces
+                numberStr.erase(numberStr.find_last_not_of(' ') + 1); // Trim trailing spaces
                 oDate.push_back(numberStr);
             }
 
@@ -1026,6 +1034,8 @@ DEFINE_string(modelFilePath, "resources/model/fraud_xgboost_1600_8", "path to th
 DEFINE_string(orderDataFilePath, "resources/data/order.csv", "path to input order dataset");
 
 int main(int argc, char** argv) {
+
+  setlocale(LC_TIME, "C");
 
   folly::init(&argc, &argv, false);
 
