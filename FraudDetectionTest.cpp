@@ -90,7 +90,7 @@ class IsWeekend : public MLFunction {
     const char* dateFormat = "%Y-%m-%d %H:%M:%S";
 
     for (int i = 0; i < rows.size(); i++) {
-      std::string inputStr = inputStrings->valueAt(i) + " 00:00:00";
+      std::string inputStr = std::string(inputStrings->valueAt(i));// + " 00:00:00";
 
       struct std::tm t;
       /*struct tm tm;
@@ -523,8 +523,9 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
             }
             else if (colIndex == 3) {
             // Trim leading and trailing whitespace from the input string (if any)
-                numberStr.erase(0, numberStr.find_first_not_of(' ')); // Trim leading spaces
-                numberStr.erase(numberStr.find_last_not_of(' ') + 1); // Trim trailing spaces
+                if (numberStr.size() >= 2 && numberStr.front() == '"' && numberStr.back() == '"') {
+                    numberStr = numberStr.substr(1, numberStr.size() - 2);
+                }
                 oDate.push_back(numberStr);
             }
 
