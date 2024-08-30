@@ -124,9 +124,9 @@ class IsWeekday : public MLFunction {
           results.push_back(0);
       } else {
           results.push_back(1);
-      } */
+      }
 
-    }
+    } */
 
     VectorMaker maker{context.pool()};
     output = maker.flatVector<int>(results);
