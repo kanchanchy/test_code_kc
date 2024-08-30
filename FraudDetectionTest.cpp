@@ -562,6 +562,9 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
 
 	    //inputArrayVector.push_back(curRow);
         index ++;
+        if (index == 3000) {
+            break
+        }
     }
 
     file.close();
