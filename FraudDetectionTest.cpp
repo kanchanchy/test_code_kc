@@ -79,12 +79,7 @@ class IsWeekday : public MLFunction {
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
-    // Decoder is required to handle address error, reference code:
-    // ArrayIntersectExcept.cpp
-    //BaseVector* data = args[0].get();
-
     auto inputStrings = args[0]->as<FlatVector<StringView>>();
-    //std::string* inputValues = inputStrings->values()->asMutable<std::string>();
 
     std::vector<int> results;
     const char* dateFormat = "%Y-%m-%d";
@@ -93,7 +88,6 @@ class IsWeekday : public MLFunction {
       std::string inputStr = std::string(inputStrings->valueAt(i));// + " 00:00:00";
 
       struct std::tm t;
-      //strptime(inputStr.c_str(), dateFormat, &t)
       std::istringstream ss(inputStr);
       ss >> std::get_time(&t, dateFormat);
 
@@ -103,12 +97,6 @@ class IsWeekday : public MLFunction {
           results.push_back(0);
           continue;
       }
-
-      // Convert tm struct to time_t (timestamp)
-      //time_t tt = mktime(&t);
-      // Cast time_t to int64_t
-      //int64_t timestamp = static_cast<int64_t>(tt);
-      //results.push_back(timestamp);
 
       std::mktime(&t); // Normalize the tm structure
       if (t.tm_wday == 0 || t.tm_wday == 6) { // Check if it's weekend
@@ -132,6 +120,73 @@ class IsWeekday : public MLFunction {
 
   static std::string getName() {
     return "is_weekday";
+  }
+
+  float* getTensor() const override {
+    // TODO: need to implement
+    return nullptr;
+  }
+
+  CostEstimate getCost(std::vector<int> inputDims) {
+    // TODO: need to implement
+    return CostEstimate(0, inputDims[0], inputDims[1]);
+  }
+
+};
+
+
+
+class DateToTimestamp : public MLFunction {
+ public:
+
+  void apply(
+      const SelectivityVector& rows,
+      std::vector<VectorPtr>& args,
+      const TypePtr& type,
+      exec::EvalCtx& context,
+      VectorPtr& output) const override {
+    BaseVector::ensureWritable(rows, type, context.pool(), output);
+
+    auto inputStrings = args[0]->as<FlatVector<StringView>>();
+
+    std::vector<int64_t> results;
+    const char* dateFormat = "%Y-%m-%d";
+
+    for (int i = 0; i < rows.size(); i++) {
+      std::string inputStr = std::string(inputStrings->valueAt(i));// + " 00:00:00";
+
+      struct std::tm t;
+      std::istringstream ss(inputStr);
+      ss >> std::get_time(&t, dateFormat);
+
+      // Check if parsing was successful
+      if (ss.fail()) {
+          std::cerr << "Failed to parse date string " << inputStr << std::endl;
+          results.push_back(0);
+          continue;
+      }
+
+      // Convert tm struct to time_t (timestamp)
+      time_t tt = mktime(&t);
+      // Cast time_t to int64_t
+      int64_t timestamp = static_cast<int64_t>(tt);
+      results.push_back(timestamp);
+
+    }
+
+    VectorMaker maker{context.pool()};
+    output = maker.flatVector<int64_t>(results);
+  }
+
+  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
+    return {exec::FunctionSignatureBuilder()
+                .argumentType("VARCHAR")
+                .returnType("BIGINT")
+                .build()};
+  }
+
+  static std::string getName() {
+    return "date_to_timestamp";
   }
 
   float* getTensor() const override {
@@ -255,7 +310,10 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
       IsWeekday::signatures(),
       std::make_unique<IsWeekday>());
 
-  std::cout << "Completed registering function for Weekend" << std::endl;
+  exec::registerVectorFunction(
+        "date_to_timestamp",
+        DateToTimestamp::signatures(),
+        std::make_unique<DateToTimestamp>());
 
 }
 
@@ -950,10 +1008,12 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
+                         .filter("is_weekday(o_date) = 1")
+                         .singleAggregation({"o_customer_sk"}, {"count(c1) AS total_order", "max(date_to_timestamp(o_date)) AS last_order_time"})
                          //.filter("customer_id > 50")
                          //.project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
                          //.filter("decision_tree_predict(features) > 0.5")
-                         .project({"o_order_id", "o_customer_sk", "o_weekday", "is_weekday(o_date) AS weekday"})
+                         .project({"o_customer_sk", "total_order", "last_order_time"})
                          .planNode();
    
  
