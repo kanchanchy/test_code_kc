@@ -1010,11 +1010,11 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .values({orderRowVector})
                          .filter("is_weekday(o_date) == 1")
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp(o_date) AS o_timestamp"})
-                         //.singleAggregation({"o_customer_sk"}, {"count(o_order_id) AS total_order", "max(o_timestamp) AS last_order_time"})
+                         .singleAggregation({"o_customer_sk"}, {"count(o_order_id) AS total_order", "max(o_timestamp) AS last_order_time"})
                          //.filter("customer_id > 50")
                          //.project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
                          //.filter("decision_tree_predict(features) > 0.5")
-                         //.project({"o_customer_sk", "total_order", "last_order_time"})
+                         .project({"o_customer_sk", "total_order", "last_order_time"})
                          .planNode();
    
  
