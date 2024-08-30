@@ -102,32 +102,6 @@ class IsWeekday : public MLFunction {
         }
     }
 
-    /*auto inputStrings = args[0]->as<FlatVector<StringView>>();
-    const char* dateFormat = "%Y-%m-%d";
-
-    for (int i = 0; i < rows.size(); i++) {
-      std::string inputStr = std::string(inputStrings->valueAt(i));// + " 00:00:00";
-
-      struct std::tm t;
-      std::istringstream ss(inputStr);
-      ss >> std::get_time(&t, dateFormat);
-
-      // Check if parsing was successful
-      if (ss.fail()) {
-          std::cerr << "Failed to parse date string " << inputStr << std::endl;
-          results.push_back(0);
-          continue;
-      }
-
-      std::mktime(&t); // Normalize the tm structure
-      if (t.tm_wday == 0 || t.tm_wday == 6) { // Check if it's weekend
-          results.push_back(0);
-      } else {
-          results.push_back(1);
-      }
-
-    } */
-
     VectorMaker maker{context.pool()};
     output = maker.flatVector<int>(results);
   }
@@ -157,8 +131,65 @@ class IsWeekday : public MLFunction {
 
 
 
+class TimeDiffInDays : public MLFunction {
+ public:
+
+  void apply(
+      const SelectivityVector& rows,
+      std::vector<VectorPtr>& args,
+      const TypePtr& type,
+      exec::EvalCtx& context,
+      VectorPtr& output) const override {
+    BaseVector::ensureWritable(rows, type, context.pool(), output);
+
+    std::vector<int64_t> results;
+    auto inputTimes1 = args[0]->as<FlatVector<int64_t>>();
+    auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
+    const int secondsInADay = 86400;
+    for (int i = 0; i < rows.size(); i++) {
+        int64_t timestamp = inputTimes->valueAt(i);
+        // Calculate the number of days since Unix epoch
+        int64_t daysSinceEpoch = timestamp / secondsInADay;
+        int64_t differenceInSeconds = std::abs(inputTimes1 - inputTimes2);
+        int64_t differenceInDays = differenceInSeconds / secondsInADay;
+        results.push_back(differenceInDays);
+    }
+
+    VectorMaker maker{context.pool()};
+    output = maker.flatVector<int64_t>(results);
+  }
+
+  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
+    return {exec::FunctionSignatureBuilder()
+                .argumentType("BIGINT")
+                .argumentType("BIGINT")
+                .returnType("BIGINT")
+                .build()};
+  }
+
+  static std::string getName() {
+    return "time_diff_in_days";
+  }
+
+  float* getTensor() const override {
+    // TODO: need to implement
+    return nullptr;
+  }
+
+  CostEstimate getCost(std::vector<int> inputDims) {
+    // TODO: need to implement
+    return CostEstimate(0, inputDims[0], inputDims[1]);
+  }
+
+};
+
+
+
 class DateToTimestamp : public MLFunction {
  public:
+ DateToTimestamp (const char* dateFormat_) {
+     dateFormat = dateFormat;
+ }
 
   void apply(
       const SelectivityVector& rows,
@@ -171,7 +202,6 @@ class DateToTimestamp : public MLFunction {
     auto inputStrings = args[0]->as<FlatVector<StringView>>();
 
     std::vector<int64_t> results;
-    const char* dateFormat = "%Y-%m-%d";
 
     for (int i = 0; i < rows.size(); i++) {
       std::string inputStr = std::string(inputStrings->valueAt(i));// + " 00:00:00";
@@ -220,6 +250,9 @@ class DateToTimestamp : public MLFunction {
     return CostEstimate(0, inputDims[0], inputDims[1]);
   }
 
+  private:
+    const char* dateFormat;
+
 };
 
 
@@ -256,6 +289,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   RowVectorPtr getCustomerData(int numCustomers, int numCustomerFeatures);
   RowVectorPtr getTransactionData(int numTransactions, int numTransactionFeatures, int numCustomers);
   RowVectorPtr getOrderData(std::string filePath);
+  RowVectorPtr getTransactionData(std::string filePath);
   
   void testingNestedLoopJoinWithPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingNestedLoopJoinWithoutPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
@@ -331,10 +365,22 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
       IsWeekday::signatures(),
       std::make_unique<IsWeekday>());
 
+  const char* dateFormat1 = "%Y-%m-%d";
   exec::registerVectorFunction(
-        "date_to_timestamp",
+        "date_to_timestamp_1",
         DateToTimestamp::signatures(),
-        std::make_unique<DateToTimestamp>());
+        std::make_unique<DateToTimestamp>(dateFormat1));
+
+  const char* dateFormat2 = "%Y-%m-%dT%H:%M";
+  exec::registerVectorFunction(
+        "date_to_timestamp_2",
+        DateToTimestamp::signatures(),
+        std::make_unique<DateToTimestamp>(dateFormat2));
+
+  exec::registerVectorFunction(
+        "time_diff_in_days",
+        TimeDiffInDays::signatures(),
+        std::make_unique<TimeDiffInDays>());
 
 }
 
@@ -601,6 +647,103 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
      );
 
      return orderRowVector;
+}
+
+
+RowVectorPtr FraudDetectionTest::getTransactionData(std::string filePath) {
+
+    std::ifstream file(filePath.c_str());
+
+    if (file.fail()) {
+
+        std::cerr << "Data File:" << filePath << " => Read Error" << std::endl;
+        exit(1);
+
+    }
+
+    std::vector<float> tAmount;
+    std::vector<int> tSender;
+    std::vector<std::string> tReceiver;
+    std::vector<int64_t> transactionId;
+    std::vector<std::string> tTime;
+
+
+    int index = 0;
+
+    std::string line;
+
+    // Ignore the first line (header)
+    if (std::getline(file, line)) {
+        std::cout << "Ignoring header: " << line << std::endl;
+    }
+
+    while (std::getline(file, line)) { // Read a line from the file
+
+        //std::vector<float> curRow(numCols);
+
+        //std::getline(file, line);
+
+        std::istringstream iss(line); // Create an input string stream from the line
+
+        std::string numberStr;
+
+	    int colIndex = 0;
+
+        while (std::getline(iss, numberStr, ',')) { // Read each number separated by comma
+            /*if (index < 5) {
+                std::cout << colIndex << ": " << numberStr << std::endl;
+            }*/
+            // Trim leading and trailing whitespace from the input string (if any)
+            if (numberStr.size() >= 2 && numberStr.front() == '"' && numberStr.back() == '"') {
+                numberStr = numberStr.substr(1, numberStr.size() - 2);
+            }
+            if (colIndex == 0) {
+                tAmount.push_back(std::stof(numberStr));
+            }
+            else if (colIndex == 1) {
+                tSender.push_back(std::stoi(numberStr));
+            }
+            else if (colIndex == 2) {
+                tReceiver.push_back(numberStr);
+            }
+            else if (colIndex == 3) {
+                transactionId.push_back(std::stoll(numberStr));
+            }
+            else if (colIndex == 4) {
+                tTime.push_back(numberStr);
+           }
+
+	        colIndex ++;
+
+        }
+
+	    //inputArrayVector.push_back(curRow);
+        index ++;
+        if (index == 10000) {
+            break;
+        }
+    }
+
+    file.close();
+
+    std::vector<float> tAmount;
+        std::vector<int> tSender;
+        std::vector<std::string> tReceiver;
+        std::vector<int64_t> transactionId;
+        std::vector<std::string> tTime;
+
+     // Prepare Customer table
+     auto tAmountVector = maker.flatVector<float>(tAmount);
+     auto tSenderVector = maker.flatVector<int>(tSender);
+     auto tReceiverVector = maker.flatVector<std::string>(tReceiver);
+     auto transactionIdVector = maker.flatVector<int64_t>(transactionId);
+     auto tTimeVector = maker.flatVector<std::string>(tTime);
+     auto transactionRowVector = maker.rowVector(
+         {"t_amount", "t_sender", "t_receiver", "transaction_id", "t_time"},
+         {tAmountVector, tSenderVector, tReceiverVector, transactionIdVector, tTimeVector}
+     );
+
+     return transactionRowVector;
 }
 
 
@@ -1007,13 +1150,14 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
 }
 
 
-void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath) {
+void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string orderFilePath, std::string modelFilePath) {
 
      auto dataFile = TempFilePath::create();                                                                      
                       
      std::string path = dataFile->path;
 
-     RowVectorPtr orderRowVector = getOrderData(dataFilePath);
+     RowVectorPtr orderRowVector = getOrderData(orderFilePath);
+     RowVectorPtr transactionRowVector = getTransactionData("resources/data/financial_transactions.csv");
 
      /*
      int numCustomers = 100;
@@ -1034,13 +1178,23 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .values({orderRowVector})
                          .filter("o_date IS NOT NULL")
                          //.filter("is_weekday(o_date) = 1")
-                         .project({"o_customer_sk", "o_order_id", "date_to_timestamp(o_date) AS o_timestamp"})
+                         .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
                          .filter("is_weekday(o_timestamp) = 1")
-                         .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as last_order_time"})
+                         .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          //.filter("customer_id > 50")
                          //.project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
                          //.filter("decision_tree_predict(features) > 0.5")
                          //.project({"o_customer_sk", "total_order", "last_order_time"})
+                         .hashJoin({"o_customer_sk"},
+                         {"t_sender"},
+                         exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({transactionRowVector})
+                         .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
+                         .planNode(),
+                         "",
+                         {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"})
+                         .filter("time_diff_in_days(o_last_order_time, t_timestamp) <= 7")
+                         .project({"o_customer_sk", "transaction_id", "total_order", "t_amount", "t_timestamp"})
                          .planNode();
    
  
