@@ -1193,7 +1193,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .planNode(),
                          "",
                          {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"})
-                         .filter("time_diff_in_days(o_last_order_time, t_timestamp) <= 7")
+                         //.filter("time_diff_in_days(o_last_order_time, t_timestamp) <= 7")
                          .project({"o_customer_sk", "transaction_id", "total_order", "t_amount", "t_timestamp"})
                          .planNode();
    
