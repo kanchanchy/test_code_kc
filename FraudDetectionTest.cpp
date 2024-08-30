@@ -90,7 +90,7 @@ class IsWeekend : public MLFunction {
     const char* dateFormat = "%Y-%m-%d %H:%M:%S";
 
     for (int i = 0; i < rows.size(); i++) {
-      std::string inputStr = std::string(inputStrings->valueAt(i)) + " 00:00:00";
+      std::string inputStr = inputStrings->valueAt(i) + " 00:00:00";
 
       struct std::tm t;
       /*struct tm tm;
