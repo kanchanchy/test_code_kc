@@ -86,7 +86,7 @@ class IsWeekday : public MLFunction {
     auto inputStrings = args[0]->as<FlatVector<StringView>>();
     //std::string* inputValues = inputStrings->values()->asMutable<std::string>();
 
-    std::vector<int64_t> results;
+    std::vector<int> results;
     const char* dateFormat = "%Y-%m-%d";
 
     for (int i = 0; i < rows.size(); i++) {
@@ -120,7 +120,7 @@ class IsWeekday : public MLFunction {
     }
 
     VectorMaker maker{context.pool()};
-    output = maker.flatVector<int64_t>(results);
+    output = maker.flatVector<int>(results);
   }
 
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
