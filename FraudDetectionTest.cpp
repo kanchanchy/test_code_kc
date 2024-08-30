@@ -358,30 +358,32 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
       "concat_vectors",
       Concat::signatures(),
       std::make_unique<Concat>(10, 18));
-
-  std::cout << "To register function for Weekend" << std::endl;
   
   exec::registerVectorFunction(
       "is_weekday",
       IsWeekday::signatures(),
       std::make_unique<IsWeekday>());
+  std::cout << "Completed registering function for is_weekday" << std::endl;
 
   const char* dateFormat1 = "%Y-%m-%d";
   exec::registerVectorFunction(
         "date_to_timestamp_1",
         DateToTimestamp::signatures(),
         std::make_unique<DateToTimestamp>(dateFormat1));
+  std::cout << "Completed registering function for date_to_timestamp_1" << std::endl;
 
   const char* dateFormat2 = "%Y-%m-%dT%H:%M";
   exec::registerVectorFunction(
         "date_to_timestamp_2",
         DateToTimestamp::signatures(),
         std::make_unique<DateToTimestamp>(dateFormat2));
+  std::cout << "Completed registering function for date_to_timestamp_2" << std::endl;
 
   exec::registerVectorFunction(
         "time_diff_in_days",
         TimeDiffInDays::signatures(),
         std::make_unique<TimeDiffInDays>());
+  std::cout << "Completed registering function for time_diff_in_days" << std::endl;
 
 }
 
@@ -1152,7 +1154,9 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      std::string path = dataFile->path;
 
      RowVectorPtr orderRowVector = getOrderData(orderFilePath);
+     std::cout << "orderRowVector data generated" << std::endl;
      RowVectorPtr transactionRowVector = getTransactionData("resources/data/financial_transactions.csv");
+     std::cout << "transactionRowVector data generated" << std::endl;
 
      /*
      int numCustomers = 100;
@@ -1188,7 +1192,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .planNode(),
                          "",
                          {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"})
-                         .filter("time_diff_in_days(o_last_order_time, t_timestamp) <= 7")
+                         //.filter("time_diff_in_days(o_last_order_time, t_timestamp) <= 7")
                          .project({"o_customer_sk", "transaction_id", "total_order", "t_amount", "t_timestamp"})
                          .planNode();
    
