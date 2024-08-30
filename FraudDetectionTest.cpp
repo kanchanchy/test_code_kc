@@ -1183,7 +1183,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.filter("customer_id > 50")
                          //.project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
                          //.filter("decision_tree_predict(features) > 0.5")
-                         //.project({"o_customer_sk", "total_order", "last_order_time"})
+                         .project({"o_customer_sk", "total_order", "o_last_order_time"})
                          .hashJoin({"o_customer_sk"},
                          {"t_sender"},
                          exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
