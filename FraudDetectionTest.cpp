@@ -1183,17 +1183,17 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.filter("customer_id > 50")
                          //.project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
                          //.filter("decision_tree_predict(features) > 0.5")
-                         .project({"o_customer_sk", "total_order", "o_last_order_time"})
+                         //.project({"o_customer_sk", "total_order", "o_last_order_time"})
                          .hashJoin({"o_customer_sk"},
                          {"t_sender"},
                          exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({transactionRowVector})
-                         //.project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
-                         .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "t_time as t_timestamp"})
+                         .filter("t_time IS NOT NULL")
+                         .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
                          .planNode(),
                          "",
                          {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"})
-                         //.filter("time_diff_in_days(o_last_order_time, t_timestamp) <= 7")
+                         .filter("time_diff_in_days(o_last_order_time, t_timestamp) <= 7")
                          .project({"o_customer_sk", "transaction_id", "total_order", "t_amount", "t_timestamp"})
                          .planNode();
    
