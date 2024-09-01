@@ -267,6 +267,9 @@ class DateToTimestamp : public MLFunction {
 
 class DateToTimestamp {
 public:
+DateToTimestamp (const char* dateFormat_) {
+     dateFormat = dateFormat_;
+ }
   // The apply method is the core of the UDF.
   // It takes the input arguments and produces an output.
   VELOX_DEFINE_FUNCTION_TYPES(DateToTimestamp);
@@ -282,7 +285,7 @@ public:
     std::istringstream ss(dateStr.data());
 
     // Specify the input date format and parse it into the tm structure.
-    ss >> std::get_time(&tm, "%Y-%m-%d");
+    ss >> std::get_time(&tm, dateFormat);
 
     // Check if the parsing failed.
     if (ss.fail()) {
@@ -312,6 +315,9 @@ public:
                 .argumentType("VARCHAR")
                 .build()};
   }
+
+  private:
+      const char* dateFormat;
 };
 
 
