@@ -57,6 +57,7 @@
 #include <iomanip>
 #include <time.h>
 #include <locale>
+#include "velox/functions/Udf.h"
 
 using namespace std;
 using namespace ml;
@@ -191,7 +192,7 @@ class TimeDiffInDays : public MLFunction {
 };
 
 
-
+/*
 class DateToTimestamp : public MLFunction {
  public:
  DateToTimestamp (const char* dateFormat_) {
@@ -206,7 +207,7 @@ class DateToTimestamp : public MLFunction {
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
-    auto inputStrings = args[0]->as<FlatVector<StringView>>();
+    auto inputStrings = args[0]->as<FlatVector<StringView>>()->elements();
 
     std::vector<int64_t> results;
 
@@ -260,6 +261,57 @@ class DateToTimestamp : public MLFunction {
   private:
     const char* dateFormat;
 
+};  */
+
+
+
+class DateToTimestamp {
+public:
+  // The apply method is the core of the UDF.
+  // It takes the input arguments and produces an output.
+  VELOX_DEFINE_FUNCTION_TYPES(DateToTimestamp);
+
+  FOLLY_ALWAYS_INLINE bool call(
+      int64_t& result,
+      const arg_type<Varchar>& dateStr) {
+
+    // Create a tm structure to hold the parsed date.
+    std::tm tm = {};
+
+    // Use std::istringstream to parse the date string.
+    std::istringstream ss(dateStr.data());
+
+    // Specify the input date format and parse it into the tm structure.
+    ss >> std::get_time(&tm, "%Y-%m-%d");
+
+    // Check if the parsing failed.
+    if (ss.fail()) {
+      // Return false to indicate an error if the date format is incorrect.
+      return false;
+    }
+
+    // Convert tm structure to time_t.
+    std::time_t time = std::mktime(&tm);
+
+    // Check for mktime failure.
+    if (time == -1) {
+      // Return false to indicate an error.
+      return false;
+    }
+
+    // Convert time_t to int64_t.
+    result = static_cast<int64_t>(time);
+    return true;
+  }
+
+  // Function signature for registration with Velox.
+  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
+    // The function takes a single VARCHAR input and returns a BIGINT (int64_t).
+    return {exec::FunctionSignatureBuilder()
+                .returnType("BIGINT")
+                .argumentType("VARCHAR")
+                .build()};
+  }
 };
 
 
