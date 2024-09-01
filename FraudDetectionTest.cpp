@@ -429,13 +429,13 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
       std::make_unique<IsWeekday>());
   std::cout << "Completed registering function for is_weekday" << std::endl;
 
-  exec::registerVectorFunction(
+  VELOX_DECLARE_VECTOR_FUNCTION(
         "date_to_timestamp_1",
         DateToTimestamp::signatures(),
         std::make_unique<DateToTimestamp>("%Y-%m-%d"));
   std::cout << "Completed registering function for date_to_timestamp_1" << std::endl;
 
-  exec::registerVectorFunction(
+  VELOX_DECLARE_VECTOR_FUNCTION(
         "date_to_timestamp_2",
         DateToTimestamp::signatures(),
         std::make_unique<DateToTimestamp>("%Y-%m-%dT%H:%M"));
