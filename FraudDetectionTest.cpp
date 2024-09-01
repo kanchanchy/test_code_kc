@@ -371,18 +371,16 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
       std::make_unique<IsWeekday>());
   std::cout << "Completed registering function for is_weekday" << std::endl;
 
-  const char* dateFormat1 = "%Y-%m-%d";
   exec::registerVectorFunction(
         "date_to_timestamp_1",
         DateToTimestamp::signatures(),
-        std::make_unique<DateToTimestamp>(dateFormat1));
+        std::make_unique<DateToTimestamp>("%Y-%m-%d"));
   std::cout << "Completed registering function for date_to_timestamp_1" << std::endl;
 
-  const char* dateFormat2 = "%Y-%m-%dT%H:%M";
   exec::registerVectorFunction(
         "date_to_timestamp_2",
         DateToTimestamp::signatures(),
-        std::make_unique<DateToTimestamp>(dateFormat2));
+        std::make_unique<DateToTimestamp>("%Y-%m-%dT%H:%M"));
   std::cout << "Completed registering function for date_to_timestamp_2" << std::endl;
 
   exec::registerVectorFunction(
