@@ -275,7 +275,7 @@ DateToTimestamp (const char* dateFormat_) {
   VELOX_DEFINE_FUNCTION_TYPES(DateToTimestamp);
 
   FOLLY_ALWAYS_INLINE bool call(
-      int64_t& result,
+      out_type<int64_t>& result,
       const arg_type<Varchar>& dateStr) {
 
     // Create a tm structure to hold the parsed date.
