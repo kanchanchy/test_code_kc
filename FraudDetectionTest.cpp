@@ -1181,26 +1181,35 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
-                         //.filter("is_weekday(o_date) = 1")
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
                          .filter("o_timestamp IS NOT NULL")
                          .filter("is_weekday(o_timestamp) = 1")
                          .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
-                         //.filter("customer_id > 50")
-                         //.project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
-                         //.filter("decision_tree_predict(features) > 0.5")
-                         //.project({"o_customer_sk", "total_order", "o_last_order_time"})
                          .hashJoin({"o_customer_sk"},
-                         {"t_sender"},
-                         exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                         .values({transactionRowVector})
-                         .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
-                         .filter("t_timestamp IS NOT NULL")
-                         .planNode(),
-                         "",
-                         {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"})
-                         .filter("time_diff_in_days(o_last_order_time, t_timestamp) <= 7")
-                         .project({"o_customer_sk", "transaction_id", "total_order", "t_amount", "t_timestamp"})
+                             {"t_sender"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values({transactionRowVector})
+                             .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
+                             .filter("t_timestamp IS NOT NULL")
+                             .planNode(),
+                             "",
+                             {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"}
+                         )
+                         /*.filter("time_diff_in_days(o_last_order_time, t_timestamp) <= 7")
+                         .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, t_timestamp) as transaction_features"})
+                         .filter("is_anomalous(transaction_features) < 0.5")
+                         .hashJoin({"o_customer_sk"},
+                             {"c_customer_sk"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values({customerRowVector})
+                             .project({"c_customer_sk", "c_current_address_sk", "get_country(c_birth_country) as c_country", "get_age(c_birth_day, c_birth_month, c_birth_year) as c_age"})
+                             .planNode(),
+                             "",
+                             {"transaction_id", "transaction_features", "c_current_address_sk", "c_country", "c_age"}
+                         )
+                         .project({"transaction_id", "get_all_features(transaction_features, c_current_address_sk, c_country, c_age) as all_features"})
+                         .filter("xgboost_model(all_features) >= 0.5")
+                         .project({"transaction_id", "dnn_model(all_features) as is_fraud"})*/
                          .planNode();
    
  
