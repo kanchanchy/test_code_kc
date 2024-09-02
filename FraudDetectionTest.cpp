@@ -150,12 +150,12 @@ class TimeDiffInDays : public MLFunction {
     } */
 
     std::vector<int64_t> results;
-    auto inputTimes1 = args[0]->as<FlatVector<int64_t>>();
-    auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
+    //auto inputTimes1 = args[0]->as<FlatVector<int64_t>>();
+    //auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
     int secondsInADay = 86400;
 
-    std::cout << "Number of elements in the FlatVector 1: " << (inputTimes1->size()) << std::endl;
-    std::cout << "Number of elements in the FlatVector 2: " << (inputTimes2->size()) << std::endl;
+    //std::cout << "Number of elements in the FlatVector 1: " << (inputTimes1->size()) << std::endl;
+    //std::cout << "Number of elements in the FlatVector 2: " << (inputTimes2->size()) << std::endl;
 
     // Ensure the SelectivityVector rows are correctly iterated over
     /*    rows.applyToSelected([&](vector_size_t i) {
@@ -180,9 +180,10 @@ class TimeDiffInDays : public MLFunction {
             continue;
         }*/
 
-        int64_t timestamp1 = inputTimes1->valueAt(i);
-        int64_t timestamp2 = inputTimes2->valueAt(i);
-        //int64_t timestamp2 = i*86400;
+        //int64_t timestamp1 = inputTimes1->valueAt(i);
+        //int64_t timestamp2 = inputTimes2->valueAt(i);
+        int64_t timestamp1 = i*86400;
+        int64_t timestamp2 = i*8640;
 
         int64_t differenceInSeconds = std::abs(timestamp1 - timestamp2);
         int64_t differenceInDays = differenceInSeconds / secondsInADay;
