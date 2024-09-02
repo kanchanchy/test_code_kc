@@ -1262,9 +1262,10 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
+                         .project({"o_customer_sk", "o_order_id", "o_timestamp", "time_diff_in_days(o_timestamp, o_timestamp) as time_diff"})
                          .filter("o_timestamp IS NOT NULL")
                          .filter("is_weekday(o_timestamp) = 1")
-                         .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
+                         /*.singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          //.singleAggregation({"o_customer_sk"}, {"max(o_timestamp) as o_last_order_time"})
                          .hashJoin({"o_customer_sk"},
                              {"t_sender"},
@@ -1277,7 +1278,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"}
                          )
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
-                         //.filter("time_diff <= 7")
+                         .filter("time_diff <= 7") */
                          /*.project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, t_timestamp) as transaction_features"})
                          .filter("is_anomalous(transaction_features) < 0.5")
                          .hashJoin({"o_customer_sk"},
