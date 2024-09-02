@@ -172,10 +172,10 @@ class TimeDiffInDays : public MLFunction {
 
 
     for (int i = 0; i < rows.size(); i++) {
-        if (inputTimes1->isNullAt(i) || inputTimes2->isNullAt(i)) {
+        /*if (inputTimes1->isNullAt(i) || inputTimes2->isNullAt(i)) {
             results.push_back(365);
             continue;
-        }
+        }*/
 
         int64_t timestamp1 = inputTimes1->valueAt(i);
         //int64_t timestamp2 = inputTimes2->valueAt(i);
