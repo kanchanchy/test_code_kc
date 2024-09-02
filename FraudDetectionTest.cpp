@@ -229,7 +229,7 @@ class DateToTimestamp : public MLFunction {
       time_t tt = mktime(&t);
       // Cast time_t to int64_t
       int64_t timestamp = static_cast<int64_t>(tt);*/
-      results.push_back(i + 1000);
+      results.push_back(i * 86400);
 
     }
 
@@ -1252,8 +1252,8 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              "",
                              {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"}
                          )
-                         /*.filter("time_diff_in_days(o_last_order_time, t_timestamp) <= 7")
-                         .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, t_timestamp) as transaction_features"})
+                         .filter("time_diff_in_days(o_last_order_time, t_timestamp) <= 7")
+                         /*.project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, t_timestamp) as transaction_features"})
                          .filter("is_anomalous(transaction_features) < 0.5")
                          .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
