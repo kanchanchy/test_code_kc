@@ -207,7 +207,7 @@ class DateToTimestamp : public MLFunction {
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
-    auto inputStrings = args[0]->as<FlatVector<StringView>>()->elements();
+    auto inputStrings = args[0]->as<FlatVector<StringView>>();
 
     std::vector<int64_t> results;
 
