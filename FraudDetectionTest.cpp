@@ -192,7 +192,7 @@ class TimeDiffInDays : public MLFunction {
 };
 
 
-/*
+
 class DateToTimestamp : public MLFunction {
  public:
  DateToTimestamp (const char* dateFormat_) {
@@ -212,7 +212,7 @@ class DateToTimestamp : public MLFunction {
     std::vector<int64_t> results;
 
     for (int i = 0; i < rows.size(); i++) {
-      std::string inputStr = std::string(inputStrings->valueAt(i));// + " 00:00:00";
+      /*std::string inputStr = std::string(inputStrings->valueAt(i));// + " 00:00:00";
 
       struct std::tm t;
       std::istringstream ss(inputStr);
@@ -228,8 +228,8 @@ class DateToTimestamp : public MLFunction {
       // Convert tm struct to time_t (timestamp)
       time_t tt = mktime(&t);
       // Cast time_t to int64_t
-      int64_t timestamp = static_cast<int64_t>(tt);
-      results.push_back(timestamp);
+      int64_t timestamp = static_cast<int64_t>(tt);*/
+      results.push_back(i + 1000);
 
     }
 
@@ -261,10 +261,10 @@ class DateToTimestamp : public MLFunction {
   private:
     const char* dateFormat;
 
-};  */
+};
 
 
-
+/*
 class DateToTimestamp {
 public:
 DateToTimestamp (const char* dateFormat_) {
@@ -318,7 +318,7 @@ DateToTimestamp (const char* dateFormat_) {
 
   private:
       const char* dateFormat;
-};
+}; */
 
 
 
@@ -429,13 +429,13 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
       std::make_unique<IsWeekday>());
   std::cout << "Completed registering function for is_weekday" << std::endl;
 
-  VELOX_DECLARE_VECTOR_FUNCTION(
+  exec::registerVectorFunction(
         "date_to_timestamp_1",
         DateToTimestamp::signatures(),
         std::make_unique<DateToTimestamp>("%Y-%m-%d"));
   std::cout << "Completed registering function for date_to_timestamp_1" << std::endl;
 
-  VELOX_DECLARE_VECTOR_FUNCTION(
+  exec::registerVectorFunction(
         "date_to_timestamp_2",
         DateToTimestamp::signatures(),
         std::make_unique<DateToTimestamp>("%Y-%m-%dT%H:%M"));
