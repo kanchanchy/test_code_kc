@@ -143,24 +143,25 @@ class TimeDiffInDays : public MLFunction {
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
-    if (args.size() < 2 || !args[0] || !args[1]) {
+    /*if (args.size() < 2 || !args[0] || !args[1]) {
         // Handle error
         std::cerr << "Two arguments for time diff not found" << std::endl;
         return;
-    }
+    }*/
 
     std::vector<int64_t> results;
     auto inputTimes1 = args[0]->as<FlatVector<int64_t>>();
-    auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
+    //auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
     int secondsInADay = 86400;
     for (int i = 0; i < rows.size(); i++) {
-        if (inputTimes1->isNullAt(i) || inputTimes2->isNullAt(i)) {
+        /*if (inputTimes1->isNullAt(i) || inputTimes2->isNullAt(i)) {
             results.push_back(364);
             continue;
-        }
+        }*/
 
         int64_t timestamp1 = inputTimes1->valueAt(i);
-        int64_t timestamp2 = inputTimes2->valueAt(i);
+        //int64_t timestamp2 = inputTimes2->valueAt(i);
+        int64_t timestamp2 = i*86400;
 
         int64_t differenceInSeconds = std::abs(timestamp1 - timestamp2);
         int64_t differenceInDays = differenceInSeconds / secondsInADay;
@@ -175,7 +176,7 @@ class TimeDiffInDays : public MLFunction {
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
     return {exec::FunctionSignatureBuilder()
                 .argumentType("BIGINT")
-                .argumentType("BIGINT")
+                //.argumentType("BIGINT")
                 .returnType("BIGINT")
                 .build()};
   }
@@ -1257,7 +1258,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              "",
                              {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"}
                          )
-                         .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
+                         .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "time_diff_in_days(o_last_order_time) as time_diff"})
                          //.filter("time_diff <= 7")
                          /*.project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, t_timestamp) as transaction_features"})
                          .filter("is_anomalous(transaction_features) < 0.5")
