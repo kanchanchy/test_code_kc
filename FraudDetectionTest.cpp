@@ -151,11 +151,11 @@ class TimeDiffInDays : public MLFunction {
 
     std::vector<int64_t> results;
     auto inputTimes1 = args[0]->as<FlatVector<int64_t>>();
-    auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
+    //auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
     int secondsInADay = 86400;
 
-    //std::cout << "Number of elements in the FlatVector 1: " << (inputTimes1->size()) << std::endl;
-    std::cout << "Number of elements in the FlatVector 2: " << (inputTimes2->size()) << std::endl;
+    std::cout << "Number of elements in the FlatVector 1: " << (inputTimes1->size()) << std::endl;
+    //std::cout << "Number of elements in the FlatVector 2: " << (inputTimes2->size()) << std::endl;
 
     // Ensure the SelectivityVector rows are correctly iterated over
     /*    rows.applyToSelected([&](vector_size_t i) {
@@ -198,7 +198,7 @@ class TimeDiffInDays : public MLFunction {
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
     return {exec::FunctionSignatureBuilder()
                 .argumentType("BIGINT")
-                .argumentType("BIGINT")
+                //.argumentType("BIGINT")
                 .returnType("BIGINT")
                 .build()};
   }
@@ -1284,7 +1284,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"},
                              core::JoinType::kInner
                          )
-                         .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
+                         .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "time_diff_in_days(o_last_order_time) as time_diff"})
                          //.filter("time_diff <= 7")
                          /*.project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, t_timestamp) as transaction_features"})
                          .filter("is_anomalous(transaction_features) < 0.5")
