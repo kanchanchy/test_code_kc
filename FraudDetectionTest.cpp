@@ -155,41 +155,14 @@ class TimeDiffInDays : public MLFunction {
     auto inputTimes2 = decodedRightArray->base()->as<FlatVector<int64_t>>();
 
     std::vector<int64_t> results;
-    //auto inputTimes1 = args[0]->as<FlatVector<int64_t>>();
-    //auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
     int secondsInADay = 86400;
 
-    std::cout << "Number of rows: " << (rows.size()) << std::endl;
-    std::cout << "Number of elements in the FlatVector 1: " << (inputTimes1->size()) << std::endl;
-    std::cout << "Number of elements in the FlatVector 2: " << (inputTimes2->size()) << std::endl;
-
-    // Ensure the SelectivityVector rows are correctly iterated over
-    /*    rows.applyToSelected([&](vector_size_t i) {
-            // Check for nulls in input vectors
-            if (inputTimes1->isNullAt(i) || inputTimes2->isNullAt(i)) {
-                results.push_back(364); // Arbitrary value for null handling
-            } else {
-                int64_t timestamp1 = inputTimes1->valueAt(i);
-                int64_t timestamp2 = inputTimes2->valueAt(i);
-
-                int64_t differenceInSeconds = std::abs(timestamp1 - timestamp2);
-                int64_t differenceInDays = differenceInSeconds / secondsInADay;
-
-                results.push_back(differenceInDays);
-            }
-        }); */
 
 
     for (int i = 0; i < rows.size(); i++) {
-        /*if (inputTimes1->isNullAt(i) || inputTimes2->isNullAt(i)) {
-            results.push_back(365);
-            continue;
-        }*/
 
         int64_t timestamp1 = inputTimes1->valueAt(i);
         int64_t timestamp2 = inputTimes2->valueAt(i);
-        //int64_t timestamp1 = i*86400;
-        //int64_t timestamp2 = i*8640;
 
         int64_t differenceInSeconds = std::abs(timestamp1 - timestamp2);
         int64_t differenceInDays = differenceInSeconds / secondsInADay;
@@ -241,14 +214,18 @@ class DateToTimestamp : public MLFunction {
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
-    auto inputStrings = args[0]->as<FlatVector<StringView>>();
+    //auto inputStrings = args[0]->as<FlatVector<StringView>>();
+    exec::LocalDecodedVector decodedStringHolder(context, *args[0], rows);
+    auto decodedStringInput = decodedStringHolder.get();
 
     std::vector<int64_t> results;
+    struct std::tm t;
 
     for (int i = 0; i < rows.size(); i++) {
-      /*std::string inputStr = std::string(inputStrings->valueAt(i));// + " 00:00:00";
+      StringView val = decodedStringInput->valueAt<StringView>(i);
+      std::string inputStr = std::string(val);
+      //std::string inputStr = std::string(inputStrings->valueAt(i));// + " 00:00:00";
 
-      struct std::tm t;
       std::istringstream ss(inputStr);
       ss >> std::get_time(&t, dateFormat);
 
@@ -262,8 +239,8 @@ class DateToTimestamp : public MLFunction {
       // Convert tm struct to time_t (timestamp)
       time_t tt = mktime(&t);
       // Cast time_t to int64_t
-      int64_t timestamp = static_cast<int64_t>(tt);*/
-      results.push_back(i * 86400);
+      int64_t timestamp = static_cast<int64_t>(tt);
+      results.push_back(timestamp);
 
     }
 
