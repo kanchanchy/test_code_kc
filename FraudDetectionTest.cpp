@@ -186,10 +186,10 @@ class TimeDiffInDays : public MLFunction {
             continue;
         }*/
 
-        //int64_t timestamp1 = inputTimes1->valueAt(i);
-        //int64_t timestamp2 = inputTimes2->valueAt(i);
-        int64_t timestamp1 = i*86400;
-        int64_t timestamp2 = i*8640;
+        int64_t timestamp1 = inputTimes1->valueAt(i);
+        int64_t timestamp2 = inputTimes2->valueAt(i);
+        //int64_t timestamp1 = i*86400;
+        //int64_t timestamp2 = i*8640;
 
         int64_t differenceInSeconds = std::abs(timestamp1 - timestamp2);
         int64_t differenceInDays = differenceInSeconds / secondsInADay;
@@ -356,79 +356,6 @@ DateToTimestamp (const char* dateFormat_) {
 
 
 
-class UdfTest : public MLFunction {
- public:
-
-  void apply(
-      const SelectivityVector& rows,
-      std::vector<VectorPtr>& args,
-      const TypePtr& type,
-      exec::EvalCtx& context,
-      VectorPtr& output) const override {
-    BaseVector::ensureWritable(rows, type, context.pool(), output);
-
-    BaseVector* left = args[0].get();
-    BaseVector* right = args[1].get();
-
-    exec::LocalDecodedVector leftHolder(context, *left, rows);
-    auto decodedLeftArray = leftHolder.get();
-    auto inputTimes1 = decodedLeftArray->base()->as<FlatVector<int64_t>>();
-
-    exec::LocalDecodedVector rightHolder(context, *right, rows);
-    auto decodedRightArray = rightHolder.get();
-    auto inputTimes2 = decodedRightArray->base()->as<FlatVector<int64_t>>();
-
-    std::vector<int64_t> results;
-    //auto inputTimes1 = args[0]->as<FlatVector<int64_t>>();
-    //auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
-    int secondsInADay = 86400;
-
-    std::cout << "Number of rows: " << (rows.size()) << std::endl;
-    std::cout << "Number of elements in the FlatVector 1: " << (inputTimes1->size()) << std::endl;
-    std::cout << "Number of elements in the FlatVector 2: " << (inputTimes2->size()) << std::endl;
-
-    for (int i = 0; i < rows.size(); i++) {
-        //int64_t timestamp1 = inputTimes1->valueAt(i);
-        //int64_t timestamp2 = inputTimes2->valueAt(i);
-        int64_t timestamp1 = i*86400;
-        int64_t timestamp2 = i*8640;
-
-        int64_t differenceInSeconds = std::abs(timestamp1 - timestamp2);
-        int64_t differenceInDays = differenceInSeconds / secondsInADay;
-
-        results.push_back(differenceInDays);
-    }
-
-    VectorMaker maker{context.pool()};
-    output = maker.flatVector<int64_t>(results);
-  }
-
-  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
-    return {exec::FunctionSignatureBuilder()
-                .argumentType("BIGINT")
-                .argumentType("BIGINT")
-                .returnType("BIGINT")
-                .build()};
-  }
-
-  static std::string getName() {
-    return "udf_test";
-  }
-
-  float* getTensor() const override {
-    // TODO: need to implement
-    return nullptr;
-  }
-
-  CostEstimate getCost(std::vector<int> inputDims) {
-    // TODO: need to implement
-    return CostEstimate(0, inputDims[0], inputDims[1]);
-  }
-
-};
-
-
-
 class FraudDetectionTest : public HiveConnectorTestBase {
  public:
   FraudDetectionTest() {
@@ -553,12 +480,6 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
         TimeDiffInDays::signatures(),
         std::make_unique<TimeDiffInDays>());
   std::cout << "Completed registering function for time_diff_in_days" << std::endl;
-
-  exec::registerVectorFunction(
-          "udf_test",
-          UdfTest::signatures(),
-          std::make_unique<UdfTest>());
-    std::cout << "Completed registering function for time_diff_in_days" << std::endl;
 
 }
 
@@ -1355,7 +1276,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.project({"o_customer_sk", "o_order_id", "o_timestamp", "time_diff_in_days(o_timestamp, o_timestamp) as time_diff"})
                          .filter("o_timestamp IS NOT NULL")
                          .filter("is_weekday(o_timestamp) = 1")
-                         .localPartition({"o_customer_sk"})
+                         //.localPartition({"o_customer_sk"})
                          .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          //.singleAggregation({"o_customer_sk"}, {"max(o_timestamp) as o_last_order_time"})
                          .hashJoin({"o_customer_sk"},
@@ -1364,14 +1285,14 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              .values({transactionRowVector})
                              .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
                              .filter("t_timestamp IS NOT NULL")
-                             .localPartition({"t_sender"})
+                             //.localPartition({"t_sender"})
                              .planNode(),
                              "",
                              {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"},
                              core::JoinType::kInner
                          )
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
-                         //.filter("time_diff <= 7")
+                         .filter("time_diff <= 7")
                          /*.project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, t_timestamp) as transaction_features"})
                          .filter("is_anomalous(transaction_features) < 0.5")
                          .hashJoin({"o_customer_sk"},
