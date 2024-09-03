@@ -130,6 +130,78 @@ class IsWeekday : public MLFunction {
 
 };
 
+class GetTransactionFeatures : public MLFunction {
+ public:
+
+  void apply(
+      const SelectivityVector& rows,
+      std::vector<VectorPtr>& args,
+      const TypePtr& type,
+      exec::EvalCtx& context,
+      VectorPtr& output) const override {
+    BaseVector::ensureWritable(rows, type, context.pool(), output);
+
+    int secondsInADay = 86400;
+    std::vector<std::vector<float>> results;
+
+    auto totalOrders = args[0]->as<FlatVector<int>>();
+    auto tAmounts = args[1]->as<FlatVector<float>>();
+    auto timeDiffs = args[2]->as<FlatVector<int64_t>>();
+    auto tTimestamps = args[3]->as<FlatVector<int64_t>>();
+
+    for (int i = 0; i < rows.size(); i++) {
+        int totalOrder = totalOrders->valueAt(i);
+        float tAmount = tAmounts->valueAt(i);
+        int64_t timeDiff = timeDiffs->valueAt(i);
+        int64_t tTimestamp = tTimestamps->valueAt(i);
+
+        // Calculate the number of days since Unix epoch
+        int64_t daysSinceEpoch = tTimestamp / secondsInADay;
+        // Unix epoch (Jan 1, 1970) was a Thursday, so dayOfWeek for epoch is 4 (0=Sunday, 6=Saturday)
+        int dayOfWeekEpoch = 4;  // Thursday
+        // Calculate the current day of the week (0=Sunday, ..., 6=Saturday)
+        int dayOfWeek = (daysSinceEpoch + dayOfWeekEpoch) % 7;
+
+        std::vector<float> vec;
+        vec.push_back(static_cast<float>(totalOrder));
+        vec.push_back(tAmount);
+        vec.push_back(static_cast<float>(timeDiff));
+        vec.push_back(static_cast<float>(dayOfWeek));
+        vec.push_back(static_cast<float>(tTimestamp));
+
+        results.push_back(vec);
+    }
+
+    VectorMaker maker{context.pool()};
+    output = maker.arrayVector<float>(results, REAL());
+  }
+
+  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
+    return {exec::FunctionSignatureBuilder()
+                .argumentType("INTEGER")
+                .argumentType("REAL")
+                .argumentType("BIGINT")
+                .argumentType("BIGINT")
+                .returnType("ARRAY(REAL)")
+                .build()};
+  }
+
+  static std::string getName() {
+    return "get_transaction_features";
+  }
+
+  float* getTensor() const override {
+    // TODO: need to implement
+    return nullptr;
+  }
+
+  CostEstimate getCost(std::vector<int> inputDims) {
+    // TODO: need to implement
+    return CostEstimate(0, inputDims[0], inputDims[1]);
+  }
+
+};
+
 
 
 class TimeDiffInDays : public MLFunction {
@@ -457,6 +529,12 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
         TimeDiffInDays::signatures(),
         std::make_unique<TimeDiffInDays>());
   std::cout << "Completed registering function for time_diff_in_days" << std::endl;
+
+  exec::registerVectorFunction(
+          "get_transaction_features",
+          GetTransactionFeatures::signatures(),
+          std::make_unique<GetTransactionFeatures>());
+    std::cout << "Completed registering function for get_transaction_features" << std::endl;
 
 }
 
@@ -1268,10 +1346,10 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"},
                              core::JoinType::kInner
                          )
-                         //.project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
-                         .filter("time_diff_in_days(o_last_order_time, t_timestamp) <= 7")
-                         /*.project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, t_timestamp) as transaction_features"})
-                         .filter("is_anomalous(transaction_features) < 0.5")
+                         .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
+                         .filter("time_diff <= 7")
+                         .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
+                         /*.filter("is_anomalous(transaction_features) < 0.5")
                          .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
