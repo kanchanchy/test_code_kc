@@ -540,7 +540,7 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
 
   exec::registerVectorFunction(
           "udf_test",
-          TimeDiffInDays::signatures(),
+          UdfTest::signatures(),
           std::make_unique<UdfTest>());
     std::cout << "Completed registering function for time_diff_in_days" << std::endl;
 
