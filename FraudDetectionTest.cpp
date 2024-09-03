@@ -364,12 +364,12 @@ class UdfTest : public MLFunction {
 
     std::vector<int64_t> results;
     auto inputTimes1 = args[0]->as<FlatVector<int64_t>>();
-    //auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
+    auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
     int secondsInADay = 86400;
 
     std::cout << "Number of rows: " << (rows.size()) << std::endl;
     std::cout << "Number of elements in the FlatVector 1: " << (inputTimes1->size()) << std::endl;
-    //std::cout << "Number of elements in the FlatVector 2: " << (inputTimes2->size()) << std::endl;
+    std::cout << "Number of elements in the FlatVector 2: " << (inputTimes2->size()) << std::endl;
 
     for (int i = 0; i < rows.size(); i++) {
         //int64_t timestamp1 = inputTimes1->valueAt(i);
@@ -390,7 +390,7 @@ class UdfTest : public MLFunction {
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
     return {exec::FunctionSignatureBuilder()
                 .argumentType("BIGINT")
-                //.argumentType("BIGINT")
+                .argumentType("BIGINT")
                 .returnType("BIGINT")
                 .build()};
   }
@@ -1284,7 +1284,7 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
                          .planNode(),
                          "",
                          {"customer_id", "customer_features", "transaction_id", "transaction_features"})
-                         .project({"customer_id", "customer_features", "transaction_id", "transaction_features", "udf_test(transaction_id) as test_result"})
+                         .project({"customer_id", "customer_features", "transaction_id", "transaction_features", "udf_test(customer_id, transaction_id) as test_result"})
                          .project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
                          .filter("xgboost_predict(features) > 0.5")
                          .project({"tid", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(features))))))))) AS label"})
