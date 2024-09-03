@@ -155,7 +155,7 @@ class TimeDiffInDays : public MLFunction {
     int secondsInADay = 86400;
 
     std::cout << "Number of elements in the FlatVector 1: " << (inputTimes1->size()) << std::endl;
-    std::cout << "Number of elements in the FlatVector 2: " << (inputTimes2->size()) << std::endl;
+    //std::cout << "Number of elements in the FlatVector 2: " << (inputTimes2->size()) << std::endl;
 
     // Ensure the SelectivityVector rows are correctly iterated over
     /*    rows.applyToSelected([&](vector_size_t i) {
