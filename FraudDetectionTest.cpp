@@ -155,11 +155,11 @@ class GetTransactionFeatures : public MLFunction {
 
     exec::LocalDecodedVector secondHolder(context, *base1, rows);
     auto decodedArray1 = secondHolder.get();
-    auto tAmounts = decodedArray1->base()->as<FlatVector<int64_t>>();
+    auto tAmounts = decodedArray1->base()->as<FlatVector<float>>();
 
     exec::LocalDecodedVector thirdHolder(context, *base2, rows);
     auto decodedArray2 = thirdHolder.get();
-    auto timeDiffs = decodedArray2->base()->as<FlatVector<float>>();
+    auto timeDiffs = decodedArray2->base()->as<FlatVector<int64_t>>();
 
     exec::LocalDecodedVector fourthHolder(context, *base3, rows);
     auto decodedArray3 = fourthHolder.get();
