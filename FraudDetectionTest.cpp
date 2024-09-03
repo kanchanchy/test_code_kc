@@ -58,6 +58,7 @@
 #include <time.h>
 #include <locale>
 #include "velox/functions/Udf.h"
+#include <unordered_map>
 
 using namespace std;
 using namespace ml;
@@ -81,7 +82,13 @@ class IsWeekday : public MLFunction {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
     std::vector<int> results;
-    auto inputTimes = args[0]->as<FlatVector<int64_t>>();
+
+    BaseVector* baseVec = args[0].get();
+    exec::LocalDecodedVector vecHolder(context, *baseVec, rows);
+    auto decodedArray = vecHolder.get();
+    auto inputTimes = decodedArray->base()->as<FlatVector<int64_t>>();
+    //auto inputTimes = args[0]->as<FlatVector<int64_t>>();
+
     const int secondsInADay = 86400;
     for (int i = 0; i < rows.size(); i++) {
         int64_t timestamp = inputTimes->valueAt(i);
@@ -130,6 +137,64 @@ class IsWeekday : public MLFunction {
 
 };
 
+
+class GetAge : public MLFunction {
+ public:
+
+  void apply(
+      const SelectivityVector& rows,
+      std::vector<VectorPtr>& args,
+      const TypePtr& type,
+      exec::EvalCtx& context,
+      VectorPtr& output) const override {
+    BaseVector::ensureWritable(rows, type, context.pool(), output);
+
+    std::vector<int> results;
+
+    BaseVector* baseVec = args[0].get();
+    exec::LocalDecodedVector vecHolder(context, *baseVec, rows);
+    auto decodedArray = vecHolder.get();
+    auto birthYears = decodedArray->base()->as<FlatVector<int>>();
+
+    time_t now = time(0);
+    // Convert to a tm struct
+    struct tm* localtime(&now);
+    // Extract the year from the tm struct (tm_year counts years since 1900)
+    int currentYear = 1900 + (localTime->tm_year);
+
+    for (int i = 0; i < rows.size(); i++) {
+        int birthYear = birthYears->valueAt(i);
+        results.push_back(currentYear - birthYear);
+    }
+
+    VectorMaker maker{context.pool()};
+    output = maker.flatVector<int>(results);
+  }
+
+  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
+    return {exec::FunctionSignatureBuilder()
+                .argumentType("INTEGER")
+                .returnType("INTEGER")
+                .build()};
+  }
+
+  static std::string getName() {
+    return "get_age";
+  }
+
+  float* getTensor() const override {
+    // TODO: need to implement
+    return nullptr;
+  }
+
+  CostEstimate getCost(std::vector<int> inputDims) {
+    // TODO: need to implement
+    return CostEstimate(0, inputDims[0], inputDims[1]);
+  }
+
+};
+
+
 class GetTransactionFeatures : public MLFunction {
  public:
 
@@ -165,11 +230,6 @@ class GetTransactionFeatures : public MLFunction {
     auto decodedArray3 = fourthHolder.get();
     auto tTimestamps = decodedArray3->base()->as<FlatVector<int64_t>>();
 
-    /*auto totalOrders = args[0]->as<FlatVector<int64_t>>();
-    auto tAmounts = args[1]->as<FlatVector<float>>();
-    auto timeDiffs = args[2]->as<FlatVector<int64_t>>();
-    auto tTimestamps = args[3]->as<FlatVector<int64_t>>();*/
-
     for (int i = 0; i < rows.size(); i++) {
         int64_t totalOrder = totalOrders->valueAt(i);
         float tAmount = tAmounts->valueAt(i);
@@ -188,7 +248,7 @@ class GetTransactionFeatures : public MLFunction {
         vec.push_back(tAmount);
         vec.push_back(static_cast<float>(timeDiff));
         vec.push_back(static_cast<float>(dayOfWeek));
-        vec.push_back(static_cast<float>(tTimestamp));
+        vec.push_back(static_cast<float>(daysSinceEpoch));
 
         results.push_back(vec);
     }
@@ -209,6 +269,90 @@ class GetTransactionFeatures : public MLFunction {
 
   static std::string getName() {
     return "get_transaction_features";
+  }
+
+  float* getTensor() const override {
+    // TODO: need to implement
+    return nullptr;
+  }
+
+  CostEstimate getCost(std::vector<int> inputDims) {
+    // TODO: need to implement
+    return CostEstimate(0, inputDims[0], inputDims[1]);
+  }
+
+};
+
+
+
+class GetCustomerFeatures : public MLFunction {
+ public:
+
+  void apply(
+      const SelectivityVector& rows,
+      std::vector<VectorPtr>& args,
+      const TypePtr& type,
+      exec::EvalCtx& context,
+      VectorPtr& output) const override {
+    BaseVector::ensureWritable(rows, type, context.pool(), output);
+
+    int secondsInADay = 86400;
+    std::vector<std::vector<float>> results;
+
+    get_customer_features(c_address_num, c_cust_flag, c_birth_country, c_age)
+
+    BaseVector* base0 = args[0].get();
+    BaseVector* base1 = args[1].get();
+    BaseVector* base2 = args[2].get();
+    BaseVector* base3 = args[3].get();
+
+    exec::LocalDecodedVector firstHolder(context, *base0, rows);
+    auto decodedArray0 = firstHolder.get();
+    auto cAddressNums = decodedArray0->base()->as<FlatVector<int>>();
+
+    exec::LocalDecodedVector secondHolder(context, *base1, rows);
+    auto decodedArray1 = secondHolder.get();
+    auto cCustFlags = decodedArray1->base()->as<FlatVector<int>>();
+
+    exec::LocalDecodedVector thirdHolder(context, *base2, rows);
+    auto decodedArray2 = thirdHolder.get();
+    auto cBirthCountries = decodedArray2->base()->as<FlatVector<int>>();
+
+    exec::LocalDecodedVector fourthHolder(context, *base3, rows);
+    auto decodedArray3 = fourthHolder.get();
+    auto cAges = decodedArray3->base()->as<FlatVector<int>>();
+
+    for (int i = 0; i < rows.size(); i++) {
+        int cAddressNum = cAddressNums->valueAt(i);
+        int cCustFlag = cCustFlags->valueAt(i);
+        int cBirthCountry = cBirthCountries->valueAt(i);
+        int cAge = cAges->valueAt(i);
+
+        std::vector<float> vec;
+        vec.push_back(static_cast<float>(cAddressNum));
+        vec.push_back(static_cast<float>(cCustFlag));
+        vec.push_back(static_cast<float>(cBirthCountry));
+        vec.push_back(static_cast<float>(cAge));
+
+        results.push_back(vec);
+    }
+
+    VectorMaker maker{context.pool()};
+    output = maker.arrayVector<float>(results, REAL());
+  }
+
+  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
+    return {exec::FunctionSignatureBuilder()
+                .argumentType("INTEGER")
+                .argumentType("INTEGER")
+                .argumentType("INTEGER")
+                .argumentType("INTEGER")
+                .returnType("ARRAY(REAL)")
+                .build()};
+  }
+
+  static std::string getName() {
+    return "get_customer_features";
   }
 
   float* getTensor() const override {
@@ -368,63 +512,6 @@ class DateToTimestamp : public MLFunction {
 };
 
 
-/*
-class DateToTimestamp {
-public:
-DateToTimestamp (const char* dateFormat_) {
-     dateFormat = dateFormat_;
- }
-  // The apply method is the core of the UDF.
-  // It takes the input arguments and produces an output.
-  VELOX_DEFINE_FUNCTION_TYPES(DateToTimestamp);
-
-  FOLLY_ALWAYS_INLINE bool call(
-      out_type<int64_t>& result,
-      const arg_type<Varchar>& dateStr) {
-
-    // Create a tm structure to hold the parsed date.
-    std::tm tm = {};
-
-    // Use std::istringstream to parse the date string.
-    std::istringstream ss(dateStr.data());
-
-    // Specify the input date format and parse it into the tm structure.
-    ss >> std::get_time(&tm, dateFormat);
-
-    // Check if the parsing failed.
-    if (ss.fail()) {
-      // Return false to indicate an error if the date format is incorrect.
-      return false;
-    }
-
-    // Convert tm structure to time_t.
-    std::time_t time = std::mktime(&tm);
-
-    // Check for mktime failure.
-    if (time == -1) {
-      // Return false to indicate an error.
-      return false;
-    }
-
-    // Convert time_t to int64_t.
-    result = static_cast<int64_t>(time);
-    return true;
-  }
-
-  // Function signature for registration with Velox.
-  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
-    // The function takes a single VARCHAR input and returns a BIGINT (int64_t).
-    return {exec::FunctionSignatureBuilder()
-                .returnType("BIGINT")
-                .argumentType("VARCHAR")
-                .build()};
-  }
-
-  private:
-      const char* dateFormat;
-}; */
-
-
 
 class FraudDetectionTest : public HiveConnectorTestBase {
  public:
@@ -455,10 +542,11 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   void registerNNFunctions(int numCols);
   void run( int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath, std::string orderDataFilePath);
   
-  RowVectorPtr getCustomerData(int numCustomers, int numCustomerFeatures);
-  RowVectorPtr getTransactionData(int numTransactions, int numTransactionFeatures, int numCustomers);
+  RowVectorPtr getCustomerDataSynthetic(int numCustomers, int numCustomerFeatures);
+  RowVectorPtr getTransactionDataSynthetic(int numTransactions, int numTransactionFeatures, int numCustomers);
   RowVectorPtr getOrderData(std::string filePath);
   RowVectorPtr getTransactionData(std::string filePath);
+  RowVectorPtr getCustomerData(std::string filePath);
   
   void testingNestedLoopJoinWithPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingNestedLoopJoinWithoutPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
@@ -555,7 +643,19 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
           "get_transaction_features",
           GetTransactionFeatures::signatures(),
           std::make_unique<GetTransactionFeatures>());
-    std::cout << "Completed registering function for get_transaction_features" << std::endl;
+  std::cout << "Completed registering function for get_transaction_features" << std::endl;
+
+  exec::registerVectorFunction(
+            "get_customer_features",
+            GetCustomerFeatures::signatures(),
+            std::make_unique<GetCustomerFeatures>());
+  std::cout << "Completed registering function for get_customer_features" << std::endl;
+
+  exec::registerVectorFunction(
+          "get_age",
+          GetAge::signatures(),
+          std::make_unique<GetAge>());
+  std::cout << "Completed registering function for get_age" << std::endl;
 
 }
 
@@ -916,7 +1016,111 @@ RowVectorPtr FraudDetectionTest::getTransactionData(std::string filePath) {
 }
 
 
-RowVectorPtr FraudDetectionTest::getCustomerData(int numCustomers, int numCustomerFeatures) {
+RowVectorPtr FraudDetectionTest::getCustomerData(std::string filePath) {
+
+    std::ifstream file(filePath.c_str());
+
+    if (file.fail()) {
+
+        std::cerr << "Data File:" << filePath << " => Read Error" << std::endl;
+        exit(1);
+
+    }
+
+    std::vector<int> cCustomerSk;
+    std::vector<int> cAddrerssNum;
+    std::vector<int> cCustFlag;
+    std::vector<int> cBirthYear;
+    std::vector<int> cBirthCountry;
+
+    std::unordered_map<std::string, int> countryMap;
+    int countryIndex = 0;
+
+    int index = 0;
+
+    std::string line;
+
+    // Ignore the first line (header)
+    if (std::getline(file, line)) {
+        std::cout << "Ignoring header: " << line << std::endl;
+    }
+
+    while (std::getline(file, line)) { // Read a line from the file
+
+        //std::vector<float> curRow(numCols);
+
+        //std::getline(file, line);
+
+        std::istringstream iss(line); // Create an input string stream from the line
+
+        std::string numberStr;
+
+	    int colIndex = 0;
+
+        while (std::getline(iss, numberStr, ',')) { // Read each number separated by comma
+            /*if (index < 5) {
+                std::cout << colIndex << ": " << numberStr << std::endl;
+            }*/
+            // Trim leading and trailing whitespace from the input string (if any)
+            if (numberStr.size() >= 2 && numberStr.front() == '"' && numberStr.back() == '"') {
+                numberStr = numberStr.substr(1, numberStr.size() - 2);
+            }
+            if (colIndex == 0) {
+                cCustomerSk.push_back(std::stoi(numberStr));
+            }
+            else if (colIndex == 2) {
+                cAddrerssNum.push_back(std::stoi(numberStr));
+            }
+            else if (colIndex == 5) {
+                if (numberStr == "N")
+                    cCustFlag.push_back(0);
+                else
+                    cCustFlag.push_back(1);
+            }
+            else if (colIndex == 8) {
+                cBirthYear.push_back(std::stoi(numberStr));
+            }
+            else if (colIndex == 9) {
+                if (countryMap.find(numberStr) == countryMap.end()) {
+                     // Key does not exist, insert it
+                     countryMap[numberStr] = countryIndex;
+                     cBirthCountry.push_back(countryIndex);
+                     countryIndex ++;
+                } else {
+                    // Key exists, retrieve its value
+                    cBirthCountry.push_back(countryMap[numberStr]);
+                }
+           }
+
+	        colIndex ++;
+
+        }
+
+	    //inputArrayVector.push_back(curRow);
+        index ++;
+        if (index == 10000) {
+            break;
+        }
+    }
+
+    file.close();
+
+     // Prepare Customer table
+     auto cCustomerSkVector = maker.flatVector<int>(cCustomerSk);
+     auto cAddrerssNumVector = maker.flatVector<int>(cAddrerssNum);
+     auto cCustFlagVector = maker.flatVector<int>(cCustFlag);
+     auto cBirthYearVector = maker.flatVector<int>(cBirthYear);
+     auto cBirthCountryVector = maker.flatVector<int>(cBirthCountry);
+     auto customerRowVector = maker.rowVector(
+         {"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_year", "c_birth_country"},
+         {cCustomerSkVector, cAddrerssNumVector, cCustFlagVector, cBirthYearVector, cBirthCountryVector}
+     );
+
+     return customerRowVector;
+}
+
+
+RowVectorPtr FraudDetectionTest::getCustomerDataSynthetic(int numCustomers, int numCustomerFeatures) {
     
     // Customer table
      std::vector<int64_t> customerIDs;
@@ -946,7 +1150,7 @@ RowVectorPtr FraudDetectionTest::getCustomerData(int numCustomers, int numCustom
 }
 
 
-RowVectorPtr FraudDetectionTest::getTransactionData(int numTransactions, int numTransactionFeatures, int numCustomers) {
+RowVectorPtr FraudDetectionTest::getTransactionDataSynthetic(int numTransactions, int numTransactionFeatures, int numCustomers) {
     
     // Transaction table
      std::vector<int64_t> transactionIDs;
@@ -993,8 +1197,8 @@ void FraudDetectionTest::testingNestedLoopJoinWithPredicatePush(int numDataSplit
      int numTransactionFeatures = 18;
 
      // Retrieve the customer and transaction data
-     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
+     RowVectorPtr customerRowVector = getCustomerDataSynthetic(numCustomers, numCustomerFeatures);
+     RowVectorPtr transactionRowVector = getTransactionDataSynthetic(numTransactions, numTransactionFeatures, numCustomers);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
@@ -1041,8 +1245,8 @@ void FraudDetectionTest::testingNestedLoopJoinWithoutPredicatePush(int numDataSp
      int numTransactionFeatures = 18;
      
      // Retrieve the customer and transaction data
-     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
+     RowVectorPtr customerRowVector = getCustomerDataSynthetic(numCustomers, numCustomerFeatures);
+     RowVectorPtr transactionRowVector = getTransactionDataSynthetic(numTransactions, numTransactionFeatures, numCustomers);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
@@ -1089,8 +1293,8 @@ void FraudDetectionTest::testingHashJoinWithPredicatePush(int numDataSplits, int
      int numTransactionFeatures = 18;
      
      // Retrieve the customer and transaction data
-     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
+     RowVectorPtr customerRowVector = getCustomerDataSynthetic(numCustomers, numCustomerFeatures);
+     RowVectorPtr transactionRowVector = getTransactionDataSynthetic(numTransactions, numTransactionFeatures, numCustomers);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
@@ -1139,8 +1343,8 @@ void FraudDetectionTest::testingHashJoinWithoutPredicatePush(int numDataSplits, 
      int numTransactionFeatures = 18;
      
      // Retrieve the customer and transaction data
-     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
+     RowVectorPtr customerRowVector = getCustomerDataSynthetic(numCustomers, numCustomerFeatures);
+     RowVectorPtr transactionRowVector = getTransactionDataSynthetic(numTransactions, numTransactionFeatures, numCustomers);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
@@ -1189,8 +1393,8 @@ void FraudDetectionTest::testingHashJoinWithPredictFilter(int numDataSplits, int
      int numTransactionFeatures = 18;
      
      // Retrieve the customer and transaction data
-     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
+     RowVectorPtr customerRowVector = getCustomerDataSynthetic(numCustomers, numCustomerFeatures);
+     RowVectorPtr transactionRowVector = getTransactionDataSynthetic(numTransactions, numTransactionFeatures, numCustomers);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
@@ -1243,8 +1447,8 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
      registerNNFunctions(numCustomerFeatures + numTransactionFeatures);
      
      // Retrieve the customer and transaction data
-     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
+     RowVectorPtr customerRowVector = getCustomerDataSynthetic(numCustomers, numCustomerFeatures);
+     RowVectorPtr transactionRowVector = getTransactionDataSynthetic(numTransactions, numTransactionFeatures, numCustomers);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
      /*
@@ -1330,6 +1534,8 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      std::cout << "orderRowVector data generated" << std::endl;
      RowVectorPtr transactionRowVector = getTransactionData("resources/data/financial_transactions.csv");
      std::cout << "transactionRowVector data generated" << std::endl;
+     RowVectorPtr customerRowVector = getCustomerData("resources/data/customer.csv");
+     std::cout << "customerRowVector data generated" << std::endl;
 
      /*
      int numCustomers = 100;
@@ -1338,12 +1544,14 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      int numTransactionFeatures = 18;
      
      // Retrieve the customer and transaction data
-     RowVectorPtr customerRowVector = getCustomerData(numCustomers, numCustomerFeatures);
-     RowVectorPtr transactionRowVector = getTransactionData(numTransactions, numTransactionFeatures, numCustomers);
+     RowVectorPtr customerRowVector = getCustomerDataSynthetic(numCustomers, numCustomerFeatures);
+     RowVectorPtr transactionRowVector = getTransactionDataSynthetic(numTransactions, numTransactionFeatures, numCustomers);
      */
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
+
+     {"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_year", "c_birth_country"}
     
                          
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
@@ -1370,19 +1578,20 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
                          .filter("time_diff <= 7")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
-                         /*.filter("is_anomalous(transaction_features) < 0.5")
+                         //.filter("is_anomalous(transaction_features) < 0.5")
                          .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values({customerRowVector})
-                             .project({"c_customer_sk", "c_current_address_sk", "get_country(c_birth_country) as c_country", "get_age(c_birth_day, c_birth_month, c_birth_year) as c_age"})
+                             .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_country", "get_age(c_birth_year) as c_age"})
+                             .project({"c_customer_sk", "get_customer_features(c_address_num, c_cust_flag, c_birth_country, c_age) as customer_features"})
                              .planNode(),
                              "",
-                             {"transaction_id", "transaction_features", "c_current_address_sk", "c_country", "c_age"}
+                             {"transaction_id", "transaction_features", "customer_features"}
                          )
-                         .project({"transaction_id", "get_all_features(transaction_features, c_current_address_sk, c_country, c_age) as all_features"})
-                         .filter("xgboost_model(all_features) >= 0.5")
-                         .project({"transaction_id", "dnn_model(all_features) as is_fraud"})*/
+                         .project({"transaction_id", "concat_vectors(customer_features, transaction_features) AS all_features"})
+                         //.filter("xgboost_model(all_features) >= 0.5")
+                         //.project({"transaction_id", "dnn_model(all_features) as is_fraud"})
                          .planNode();
    
  
