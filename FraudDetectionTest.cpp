@@ -1676,7 +1676,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
                          .filter("time_diff <= 7")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
-                         .project({"o_customer_sk", "transaction_id", fmt::format(anomaly_model, "transaction_features") + " AS anomaly_probs"})
+                         .project({"o_customer_sk", "transaction_id", "transaction_features", fmt::format(anomaly_model, "transaction_features") + " AS anomaly_probs"})
                          .filter("is_anomalous(anomaly_probs) = 0")
                          .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
