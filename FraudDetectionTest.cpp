@@ -56,6 +56,7 @@
 #include <ctime>
 #include <iomanip>
 #include <time.h>
+#include <chrono>
 #include <locale>
 #include "velox/functions/Udf.h"
 #include <unordered_map>
@@ -156,11 +157,10 @@ class GetAge : public MLFunction {
     auto decodedArray = vecHolder.get();
     auto birthYears = decodedArray->base()->as<FlatVector<int>>();
 
-    time_t now = time(0);
-    // Convert to a tm struct
-    struct tm* localtime(&now);
-    // Extract the year from the tm struct (tm_year counts years since 1900)
-    int currentYear = 1900 + (localTime->tm_year);
+    auto now = std::chrono::system_clock::now();
+    std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
+    std::tm* localTime = std::localtime(&currentTime);
+    int currentYear = 1900 + localTime->tm_year;
 
     for (int i = 0; i < rows.size(); i++) {
         int birthYear = birthYears->valueAt(i);
@@ -1548,9 +1548,6 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
-
-     {"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_year", "c_birth_country"}
-    
                          
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
