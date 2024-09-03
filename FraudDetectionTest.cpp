@@ -511,6 +511,62 @@ class DateToTimestamp : public MLFunction {
 
 
 
+class IsAnomalous : public MLFunction {
+ public:
+
+  void apply(
+      const SelectivityVector& rows,
+      std::vector<VectorPtr>& args,
+      const TypePtr& type,
+      exec::EvalCtx& context,
+      VectorPtr& output) const override {
+    BaseVector::ensureWritable(rows, type, context.pool(), output);
+
+    std::vector<int> results;
+
+    BaseVector* baseVec = args[0].get();
+    exec::LocalDecodedVector vecHolder(context, *baseVec, rows);
+    auto decodedArray = vecHolder.get();
+    auto inputProbs = decodedArray->base()->as<ArrayVector>();
+    auto inputProbsValues = inputProbs->elements()->asFlatVector<float>();
+
+    for (int i = 0; i < rows.size(); i++) {
+        int32_t offset = inputProbs->offsetAt(i);
+        float prob_0 = inputProbsValues->valueAt(offset);
+        float prob_1 = inputProbsValues->valueAt(offset + 1);
+        int predicted_class = (prob_0 > prob_1) ? 0 : 1;
+        results.push_back(predicted_class);
+    }
+
+    VectorMaker maker{context.pool()};
+    output = maker.flatVector<int>(results);
+  }
+
+  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
+    return {exec::FunctionSignatureBuilder()
+                .argumentType("ARRAY(REAL)")
+                .returnType("INTEGER")
+                .build()};
+  }
+
+  static std::string getName() {
+    return "is_anomalous";
+  }
+
+  float* getTensor() const override {
+    // TODO: need to implement
+    return nullptr;
+  }
+
+  CostEstimate getCost(std::vector<int> inputDims) {
+    // TODO: need to implement
+    return CostEstimate(0, inputDims[0], inputDims[1]);
+  }
+
+};
+
+
+
 class FraudDetectionTest : public HiveConnectorTestBase {
  public:
   FraudDetectionTest() {
@@ -659,6 +715,12 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
         "concat_vectors2",
         Concat::signatures(),
         std::make_unique<Concat>(4, 5));
+
+  exec::registerVectorFunction(
+            "is_anomalous",
+            IsAnomalous::signatures(),
+            std::make_unique<IsAnomalous>());
+    std::cout << "Completed registering function for is_anomalous" << std::endl;
 
 }
 
@@ -1551,6 +1613,32 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      RowVectorPtr customerRowVector = getCustomerData("resources/data/customer.csv");
      std::cout << "customerRowVector data generated" << std::endl;
 
+     RandomGenerator randomGenerator = RandomGenerator(-1, 1, 0);
+     randomGenerator.setFloatRange(-1, 1);
+
+     std::vector<std::vector<float>> itemNNweight1 = randomGenerator.genFloat2dVector(5, 8);
+     auto itemNNweight1Vector = maker.arrayVector<float>(itemNNweight1, REAL());
+
+     std::vector<std::vector<float>> itemNNBias1 = randomGenerator.genFloat2dVector(8, 1);
+     auto itemNNBias1Vector = maker.arrayVector<float>(itemNNBias1, REAL());
+
+     std::vector<std::vector<float>> itemNNweight2 = randomGenerator.genFloat2dVector(8, 2);
+     auto itemNNweight2Vector = maker.arrayVector<float>(itemNNweight2, REAL());
+
+     std::vector<std::vector<float>> itemNNBias2 = randomGenerator.genFloat2dVector(2, 1);
+     auto itemNNBias2Vector = maker.arrayVector<float>(itemNNBias2, REAL());
+
+     std::string anomaly_model =  NNBuilder()
+                                 .denseLayer(8, 5,
+                                 itemNNweight1Vector->elements()->values()->asMutable<float>(),
+                                 itemNNBias1Vector->elements()->values()->asMutable<float>(),
+                                 NNBuilder::RELU)
+                                 .denseLayer(2, 8,
+                                 itemNNweight2Vector->elements()->values()->asMutable<float>(),
+                                 itemNNBias2Vector->elements()->values()->asMutable<float>(),
+                                 NNBuilder::SOFTMAX)
+                                 .build();
+
      /*
      int numCustomers = 100;
      int numTransactions = 1000;
@@ -1573,7 +1661,6 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .filter("is_weekday(o_timestamp) = 1")
                          //.localPartition({"o_customer_sk"})
                          .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
-                         //.singleAggregation({"o_customer_sk"}, {"max(o_timestamp) as o_last_order_time"})
                          .hashJoin({"o_customer_sk"},
                              {"t_sender"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
@@ -1589,7 +1676,8 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
                          .filter("time_diff <= 7")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
-                         //.filter("is_anomalous(transaction_features) < 0.5")
+                         .project({"o_customer_sk", "transaction_id", fmt::format(anomaly_model, "transaction_features") + " AS anomaly_probs"})
+                         .filter("is_anomalous(anomaly_probs) = 0")
                          .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
