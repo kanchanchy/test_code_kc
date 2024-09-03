@@ -144,13 +144,13 @@ class GetTransactionFeatures : public MLFunction {
     int secondsInADay = 86400;
     std::vector<std::vector<float>> results;
 
-    auto totalOrders = args[0]->as<FlatVector<int>>();
+    auto totalOrders = args[0]->as<FlatVector<int64_t>>();
     auto tAmounts = args[1]->as<FlatVector<float>>();
     auto timeDiffs = args[2]->as<FlatVector<int64_t>>();
     auto tTimestamps = args[3]->as<FlatVector<int64_t>>();
 
     for (int i = 0; i < rows.size(); i++) {
-        int totalOrder = totalOrders->valueAt(i);
+        int64_t totalOrder = totalOrders->valueAt(i);
         float tAmount = tAmounts->valueAt(i);
         int64_t timeDiff = timeDiffs->valueAt(i);
         int64_t tTimestamp = tTimestamps->valueAt(i);
@@ -178,7 +178,7 @@ class GetTransactionFeatures : public MLFunction {
 
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
     return {exec::FunctionSignatureBuilder()
-                .argumentType("INTEGER")
+                .argumentType("BIGINT")
                 .argumentType("REAL")
                 .argumentType("BIGINT")
                 .argumentType("BIGINT")
