@@ -144,10 +144,31 @@ class GetTransactionFeatures : public MLFunction {
     int secondsInADay = 86400;
     std::vector<std::vector<float>> results;
 
-    auto totalOrders = args[0]->as<FlatVector<int64_t>>();
+    BaseVector* base0 = args[0].get();
+    BaseVector* base1 = args[1].get();
+    BaseVector* base2 = args[2].get();
+    BaseVector* base3 = args[3].get();
+
+    exec::LocalDecodedVector firstHolder(context, *base0, rows);
+    auto decodedArray0 = firstHolder.get();
+    auto totalOrders = decodedArray0->base()->as<FlatVector<int64_t>>();
+
+    exec::LocalDecodedVector secondHolder(context, *base1, rows);
+    auto decodedArray1 = secondHolder.get();
+    auto tAmounts = decodedArray1->base()->as<FlatVector<int64_t>>();
+
+    exec::LocalDecodedVector thirdHolder(context, *base2, rows);
+    auto decodedArray2 = thirdHolder.get();
+    auto timeDiffs = decodedArray2->base()->as<FlatVector<float>>();
+
+    exec::LocalDecodedVector fourthHolder(context, *base3, rows);
+    auto decodedArray3 = fourthHolder.get();
+    auto tTimestamps = decodedArray3->base()->as<FlatVector<int64_t>>();
+
+    /*auto totalOrders = args[0]->as<FlatVector<int64_t>>();
     auto tAmounts = args[1]->as<FlatVector<float>>();
     auto timeDiffs = args[2]->as<FlatVector<int64_t>>();
-    auto tTimestamps = args[3]->as<FlatVector<int64_t>>();
+    auto tTimestamps = args[3]->as<FlatVector<int64_t>>();*/
 
     for (int i = 0; i < rows.size(); i++) {
         int64_t totalOrder = totalOrders->valueAt(i);
