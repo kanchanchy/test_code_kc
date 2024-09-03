@@ -362,9 +362,20 @@ class UdfTest : public MLFunction {
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
+    BaseVector* left = args[0].get();
+    BaseVector* right = args[1].get();
+
+    exec::LocalDecodedVector leftHolder(context, *left, rows);
+    auto decodedLeftArray = leftHolder.get();
+    auto inputTimes1 = decodedLeftArray->base()->as<FlatVector<int64_t>>();
+
+    exec::LocalDecodedVector rightHolder(context, *right, rows);
+    auto decodedRightArray = rightHolder.get();
+    auto inputTimes2 = decodedRightArray->base()->as<FlatVector<int64_t>>();
+
     std::vector<int64_t> results;
-    auto inputTimes1 = args[0]->as<FlatVector<int64_t>>();
-    auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
+    //auto inputTimes1 = args[0]->as<FlatVector<int64_t>>();
+    //auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
     int secondsInADay = 86400;
 
     std::cout << "Number of rows: " << (rows.size()) << std::endl;
