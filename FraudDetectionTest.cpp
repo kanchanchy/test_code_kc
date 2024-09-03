@@ -299,8 +299,6 @@ class GetCustomerFeatures : public MLFunction {
     int secondsInADay = 86400;
     std::vector<std::vector<float>> results;
 
-    get_customer_features(c_address_num, c_cust_flag, c_birth_country, c_age)
-
     BaseVector* base0 = args[0].get();
     BaseVector* base1 = args[1].get();
     BaseVector* base2 = args[2].get();
