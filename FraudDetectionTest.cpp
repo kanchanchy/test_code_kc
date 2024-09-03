@@ -655,6 +655,11 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
           std::make_unique<GetAge>());
   std::cout << "Completed registering function for get_age" << std::endl;
 
+  exec::registerVectorFunction(
+        "concat_vectors2",
+        Concat::signatures(),
+        std::make_unique<Concat>(4, 5));
+
 }
 
 
@@ -664,23 +669,23 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
   randomGenerator.setFloatRange(-1, 1);
 
   std::vector<std::vector<float>> itemNNweight1 =
-      randomGenerator.genFloat2dVector(numCols, 32);
+      randomGenerator.genFloat2dVector(numCols, 16);
   auto itemNNweight1Vector = maker.arrayVector<float>(itemNNweight1, REAL());
 
   std::vector<std::vector<float>> itemNNBias1 =
-      randomGenerator.genFloat2dVector(32, 1);
+      randomGenerator.genFloat2dVector(16, 1);
   auto itemNNBias1Vector = maker.arrayVector<float>(itemNNBias1, REAL());
 
   std::vector<std::vector<float>> itemNNweight2 =
-      randomGenerator.genFloat2dVector(32, 16);
+      randomGenerator.genFloat2dVector(16, 8);
   auto itemNNweight2Vector = maker.arrayVector<float>(itemNNweight2, REAL());
 
   std::vector<std::vector<float>> itemNNBias2 =
-      randomGenerator.genFloat2dVector(16, 1);
+      randomGenerator.genFloat2dVector(8, 1);
   auto itemNNBias2Vector = maker.arrayVector<float>(itemNNBias2, REAL());
 
   std::vector<std::vector<float>> itemNNweight3 =
-      randomGenerator.genFloat2dVector(16, 2);
+      randomGenerator.genFloat2dVector(8, 2);
   auto itemNNweight3Vector = maker.arrayVector<float>(itemNNweight3, REAL());
 
   std::vector<std::vector<float>> itemNNBias3 =
@@ -693,34 +698,34 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
       std::make_unique<MatrixMultiply>(
           itemNNweight1Vector->elements()->values()->asMutable<float>(),
           numCols,
-          32));
+          16));
 
   exec::registerVectorFunction(
       "mat_vector_add_1",
       MatrixVectorAddition::signatures(),
       std::make_unique<MatrixVectorAddition>(
-          itemNNBias1Vector->elements()->values()->asMutable<float>(), 32));
+          itemNNBias1Vector->elements()->values()->asMutable<float>(), 16));
 
   exec::registerVectorFunction(
       "mat_mul_2",
       MatrixMultiply::signatures(),
       std::make_unique<MatrixMultiply>(
           itemNNweight2Vector->elements()->values()->asMutable<float>(),
-          32,
-          16));
+          16,
+          8));
 
   exec::registerVectorFunction(
       "mat_vector_add_2",
       MatrixVectorAddition::signatures(),
       std::make_unique<MatrixVectorAddition>(
-          itemNNBias2Vector->elements()->values()->asMutable<float>(), 16));
+          itemNNBias2Vector->elements()->values()->asMutable<float>(), 8));
 
   exec::registerVectorFunction(
       "mat_mul_3",
       MatrixMultiply::signatures(),
       std::make_unique<MatrixMultiply>(
           itemNNweight3Vector->elements()->values()->asMutable<float>(),
-          16,
+          8,
           2));
 
   exec::registerVectorFunction(
@@ -1534,7 +1539,8 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
 
 void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string orderFilePath, std::string modelFilePath) {
 
-     auto dataFile = TempFilePath::create();                                                                      
+     registerNNFunctions(9);
+     auto dataFile = TempFilePath::create();
                       
      std::string path = dataFile->path;
 
@@ -1594,9 +1600,9 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              "",
                              {"transaction_id", "transaction_features", "customer_features"}
                          )
-                         .project({"transaction_id", "concat_vectors(customer_features, transaction_features) AS all_features"})
+                         .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
                          //.filter("xgboost_model(all_features) >= 0.5")
-                         //.project({"transaction_id", "dnn_model(all_features) as is_fraud"})
+                         .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS label"})
                          .planNode();
    
  
