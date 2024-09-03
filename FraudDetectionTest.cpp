@@ -351,6 +351,68 @@ DateToTimestamp (const char* dateFormat_) {
 
 
 
+class UdfTest : public MLFunction {
+ public:
+
+  void apply(
+      const SelectivityVector& rows,
+      std::vector<VectorPtr>& args,
+      const TypePtr& type,
+      exec::EvalCtx& context,
+      VectorPtr& output) const override {
+    BaseVector::ensureWritable(rows, type, context.pool(), output);
+
+    std::vector<int64_t> results;
+    auto inputTimes1 = args[0]->as<FlatVector<int64_t>>();
+    //auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
+    int secondsInADay = 86400;
+
+    std::cout << "Number of rows: " << (rows.size()) << std::endl;
+    std::cout << "Number of elements in the FlatVector 1: " << (inputTimes1->size()) << std::endl;
+    //std::cout << "Number of elements in the FlatVector 2: " << (inputTimes2->size()) << std::endl;
+
+    for (int i = 0; i < rows.size(); i++) {
+        //int64_t timestamp1 = inputTimes1->valueAt(i);
+        //int64_t timestamp2 = inputTimes2->valueAt(i);
+        int64_t timestamp1 = i*86400;
+        int64_t timestamp2 = i*8640;
+
+        int64_t differenceInSeconds = std::abs(timestamp1 - timestamp2);
+        int64_t differenceInDays = differenceInSeconds / secondsInADay;
+
+        results.push_back(differenceInDays);
+    }
+
+    VectorMaker maker{context.pool()};
+    output = maker.flatVector<int64_t>(results);
+  }
+
+  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
+    return {exec::FunctionSignatureBuilder()
+                .argumentType("BIGINT")
+                //.argumentType("BIGINT")
+                .returnType("BIGINT")
+                .build()};
+  }
+
+  static std::string getName() {
+    return "udf_test";
+  }
+
+  float* getTensor() const override {
+    // TODO: need to implement
+    return nullptr;
+  }
+
+  CostEstimate getCost(std::vector<int> inputDims) {
+    // TODO: need to implement
+    return CostEstimate(0, inputDims[0], inputDims[1]);
+  }
+
+};
+
+
+
 class FraudDetectionTest : public HiveConnectorTestBase {
  public:
   FraudDetectionTest() {
@@ -475,6 +537,12 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
         TimeDiffInDays::signatures(),
         std::make_unique<TimeDiffInDays>());
   std::cout << "Completed registering function for time_diff_in_days" << std::endl;
+
+  exec::registerVectorFunction(
+          "udf_test",
+          TimeDiffInDays::signatures(),
+          std::make_unique<UdfTest>());
+    std::cout << "Completed registering function for time_diff_in_days" << std::endl;
 
 }
 
@@ -1216,6 +1284,7 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
                          .planNode(),
                          "",
                          {"customer_id", "customer_features", "transaction_id", "transaction_features"})
+                         .project({"customer_id", "customer_features", "transaction_id", "transaction_features", "udf_test(customer_id) as test_result"})
                          .project({"transaction_id AS tid", "concat_vectors(customer_features, transaction_features) AS features"})
                          .filter("xgboost_predict(features) > 0.5")
                          .project({"tid", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(features))))))))) AS label"})
@@ -1330,8 +1399,8 @@ void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, i
       //testingHashJoinWithPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
       //testingHashJoinWithoutPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
       //testingHashJoinWithPredictFilter(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
-      //testingHashJoinWithNeuralNetwork(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
-      testingWithRealData(numDataSplits, dataBatchSize, numRows, numCols, orderDataFilePath, modelFilePath);
+      testingHashJoinWithNeuralNetwork(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
+      //testingWithRealData(numDataSplits, dataBatchSize, numRows, numCols, orderDataFilePath, modelFilePath);
   }
 
   else
