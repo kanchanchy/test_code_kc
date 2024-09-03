@@ -154,6 +154,7 @@ class TimeDiffInDays : public MLFunction {
     //auto inputTimes2 = args[1]->as<FlatVector<int64_t>>();
     int secondsInADay = 86400;
 
+    std::cout << "Number of rows: " << (rows.size()) << std::endl;
     std::cout << "Number of elements in the FlatVector 1: " << (inputTimes1->size()) << std::endl;
     //std::cout << "Number of elements in the FlatVector 2: " << (inputTimes2->size()) << std::endl;
 
