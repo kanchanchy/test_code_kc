@@ -1063,7 +1063,16 @@ RowVectorPtr FraudDetectionTest::getCustomerData(std::string filePath) {
             if (numberStr.size() >= 2 && numberStr.front() == '"' && numberStr.back() == '"') {
                 numberStr = numberStr.substr(1, numberStr.size() - 2);
             }
-            std::cout << "Column Index: " << colIndex << ", Value: " << numberStr << std::endl;
+
+            size_t first = numberStr.find_first_not_of(' ');
+            if (first == std::string::npos)
+                numberStr = "0";
+            else {
+                size_t last = numberStr.find_last_not_of(' ');
+                numberStr = numberStr.substr(first, (last - first + 1));
+            }
+
+            //std::cout << "Column Index: " << colIndex << ", Value: " << numberStr << std::endl;
             if (colIndex == 0) {
                 cCustomerSk.push_back(std::stoi(numberStr));
             }
