@@ -928,9 +928,10 @@ RowVectorPtr FraudDetectionTest::writeDataToFile(std::string csvFilePath, int nu
 
 
 std::vector<std::vector<float>> FraudDetectionTest::loadHDF5Array(const std::string& filename, const std::string& datasetName) {
-    if (!std::filesystem::exists(filename)) {
+    /*if (!std::filesystem::exists(filename)) {
           throw std::runtime_error("File not found: " + filename);
-    }
+    }*/
+
     H5::H5File file(filename, H5F_ACC_RDONLY);
     H5::DataSet dataset = file.openDataSet(datasetName);
     H5::DataSpace dataspace = dataset.getSpace();
