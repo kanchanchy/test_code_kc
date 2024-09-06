@@ -602,6 +602,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   RowVectorPtr getOrderData(std::string filePath);
   RowVectorPtr getTransactionData(std::string filePath);
   RowVectorPtr getCustomerData(std::string filePath);
+  std::vector<std::vector<float>> loadHDF5Array(const std::string& filename, const std::string& datasetName);
   
   void testingNestedLoopJoinWithPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingNestedLoopJoinWithoutPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
