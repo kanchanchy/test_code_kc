@@ -60,6 +60,7 @@
 #include <locale>
 #include "velox/functions/Udf.h"
 #include <unordered_map>
+#include <H5Cpp.h>
 
 using namespace std;
 using namespace ml;
@@ -511,7 +512,7 @@ class DateToTimestamp : public MLFunction {
 
 
 
-class IsAnomalous : public MLFunction {
+class GetBinaryClass : public MLFunction {
  public:
 
   void apply(
@@ -550,7 +551,7 @@ class IsAnomalous : public MLFunction {
   }
 
   static std::string getName() {
-    return "is_anomalous";
+    return "get_binary_class";
   }
 
   float* getTensor() const override {
@@ -717,10 +718,16 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
         std::make_unique<Concat>(4, 5));
 
   exec::registerVectorFunction(
-            "is_anomalous",
-            IsAnomalous::signatures(),
-            std::make_unique<IsAnomalous>());
+            "get_binary_class",
+            GetBinaryClass::signatures(),
+            std::make_unique<GetBinaryClass>());
     std::cout << "Completed registering function for is_anomalous" << std::endl;
+
+  std::string xgboost_fraud_model_path = "resources/model/fraud_xgboost_model.json";
+  exec::registerVectorFunction(
+        "xgboost_fraud_predict",
+        XGBoostPrediction::signatures(),
+        std::make_unique<XGBoostPrediction>(xgboost_fraud_model_path, numCols, true));
 
 }
 
@@ -730,7 +737,7 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
   RandomGenerator randomGenerator = RandomGenerator(-1, 1, 0);
   randomGenerator.setFloatRange(-1, 1);
 
-  std::vector<std::vector<float>> itemNNweight1 =
+  /*std::vector<std::vector<float>> itemNNweight1 =
       randomGenerator.genFloat2dVector(numCols, 16);
   auto itemNNweight1Vector = maker.arrayVector<float>(itemNNweight1, REAL());
 
@@ -752,7 +759,22 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
 
   std::vector<std::vector<float>> itemNNBias3 =
       randomGenerator.genFloat2dVector(2, 1);
-  auto itemNNBias3Vector = maker.arrayVector<float>(itemNNBias3, REAL());
+  auto itemNNBias3Vector = maker.arrayVector<float>(itemNNBias3, REAL());*/
+
+
+  std::vector<std::vector<float>> w1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.weight");
+  std::vector<std::vector<float>> b1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.bias");
+  std::vector<std::vector<float>> w2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.weight");
+  std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.bias");
+  std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight");
+  std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.bias");
+
+  auto itemNNweight1Vector = maker.arrayVector<float>(w1, REAL());
+  auto itemNNweight2Vector = maker.arrayVector<float>(w2, REAL());
+  auto itemNNweight3Vector = maker.arrayVector<float>(w3, REAL());
+  auto itemNNBias1Vector = maker.arrayVector<float>(b1, REAL());
+  auto itemNNBias2Vector = maker.arrayVector<float>(b2, REAL());
+  auto itemNNBias3Vector = maker.arrayVector<float>(b3, REAL());
 
   exec::registerVectorFunction(
       "mat_mul_1",
@@ -901,6 +923,57 @@ RowVectorPtr FraudDetectionTest::writeDataToFile(std::string csvFilePath, int nu
 
     return inputRowVector;
 
+}
+
+
+std::vector<std::vector<float>> FraudDetectionTest::loadHDF5Array(const std::string& filename, const std::string& datasetName) {
+    if (!std::filesystem::exists(filename)) {
+          throw std::runtime_error("File not found: " + filename);
+    }
+    H5::H5File file(filename, H5F_ACC_RDONLY);
+    H5::DataSet dataset = file.openDataSet(datasetName);
+    H5::DataSpace dataspace = dataset.getSpace();
+
+    // Get the number of dimensions
+    int rank = dataspace.getSimpleExtentNdims();
+    // std::cout << "Rank: " << rank << std::endl;
+
+    // Allocate space for the dimensions
+    std::vector<hsize_t> dims(rank);
+
+    // Get the dataset dimensions
+    dataspace.getSimpleExtentDims(dims.data(), nullptr);
+
+    size_t rows;
+    size_t cols;
+
+    if (rank == 1) {
+      rows = dims[0];
+      cols = 1;
+    } else if (rank == 2) {
+      rows = dims[0];
+      cols = dims[1];
+    } else {
+      throw std::runtime_error("Unsupported rank: " + std::to_string(rank));
+    }
+
+    // Read data into a 1D vector
+    std::vector<float> flatData(rows * cols);
+    dataset.read(flatData.data(), H5::PredType::NATIVE_FLOAT);
+
+    // Convert to 2D vector
+    std::vector<std::vector<float>> result(rows, std::vector<float>(cols));
+    for (size_t i = 0; i < rows; ++i) {
+        for (size_t j = 0; j < cols; ++j) {
+            result[i][j] = flatData[i * cols + j];
+        }
+    }
+
+    // Close the dataset and file
+    dataset.close();
+    file.close();
+
+    return result;
 }
 
 
@@ -1193,6 +1266,7 @@ RowVectorPtr FraudDetectionTest::getCustomerData(std::string filePath) {
 
      return customerRowVector;
 }
+
 
 
 RowVectorPtr FraudDetectionTest::getCustomerDataSynthetic(int numCustomers, int numCustomerFeatures) {
@@ -1613,7 +1687,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      RowVectorPtr customerRowVector = getCustomerData("resources/data/customer.csv");
      std::cout << "customerRowVector data generated" << std::endl;
 
-     RandomGenerator randomGenerator = RandomGenerator(-1, 1, 0);
+     /*RandomGenerator randomGenerator = RandomGenerator(-1, 1, 0);
      randomGenerator.setFloatRange(-1, 1);
 
      std::vector<std::vector<float>> itemNNweight1 = randomGenerator.genFloat2dVector(5, 8);
@@ -1637,7 +1711,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                                  itemNNweight2Vector->elements()->values()->asMutable<float>(),
                                  itemNNBias2Vector->elements()->values()->asMutable<float>(),
                                  NNBuilder::SOFTMAX)
-                                 .build();
+                                 .build();*/
 
      /*
      int numCustomers = 100;
@@ -1676,8 +1750,8 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
                          .filter("time_diff <= 7")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
-                         .project({"o_customer_sk", "transaction_id", "transaction_features", fmt::format(anomaly_model, "transaction_features") + " AS anomaly_probs"})
-                         .filter("is_anomalous(anomaly_probs) = 0")
+                         //.project({"o_customer_sk", "transaction_id", "transaction_features", fmt::format(anomaly_model, "transaction_features") + " AS anomaly_probs"})
+                         //.filter("get_binary_class(anomaly_probs) = 0")
                          .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
@@ -1689,8 +1763,10 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"transaction_id", "transaction_features", "customer_features"}
                          )
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
-                         //.filter("xgboost_model(all_features) >= 0.5")
-                         .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS label"})
+                         .filter("xgboost_fraud_predict(all_features) >= 0.5")
+                         .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
+                         .filter("get_binary_class(fraudulent_probs) == 1")
+                         .project({"transaction_id"})
                          .planNode();
    
  
@@ -1736,7 +1812,7 @@ DEFINE_int32(numTreeSplits, 16, "number of tree splits");
 DEFINE_int32(numTreeRows, 100, "batch size for processing trees");
 DEFINE_int32(dataBatchSize, 100, "batch size for processing input samples");
 DEFINE_int32(numRows, 10, "number of tuples in the dataset to be predicted");
-DEFINE_int32(numCols, 10, "number of columns in the dataset to be predicted");
+DEFINE_int32(numCols, 9, "number of columns in the dataset to be predicted");
 DEFINE_string(dataFilePath, "resources/data/creditcard_test.csv", "path to input dataset to be predicted");
 DEFINE_string(modelFilePath, "resources/model/fraud_xgboost_1600_8", "path to the model used for prediction");
 DEFINE_string(orderDataFilePath, "resources/data/order.csv", "path to input order dataset");
