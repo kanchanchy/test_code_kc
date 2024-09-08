@@ -1766,7 +1766,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .filter("time_diff <= 7")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
                          //.project({"o_customer_sk", "transaction_id", "transaction_features", fmt::format(anomaly_model, "transaction_features") + " AS anomaly_probs"})
-                         .filter("xgboost_fraud_transaction(transaction_features) >= 5")
+                         .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
                          .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
