@@ -607,7 +607,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   RowVectorPtr getOrderData(std::string filePath);
   RowVectorPtr getTransactionData(std::string filePath);
   RowVectorPtr getCustomerData(std::string filePath);
-  std::vector<std::vector<float>> loadHDF5Array(const std::string& filename, const std::string& datasetName);
+  std::vector<std::vector<float>> loadHDF5Array(const std::string& filename, const std::string& datasetName, int doPrint);
   
   void testingNestedLoopJoinWithPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingNestedLoopJoinWithoutPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
@@ -776,12 +776,12 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
   auto itemNNBias3Vector = maker.arrayVector<float>(itemNNBias3, REAL());*/
 
 
-  std::vector<std::vector<float>> w1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.weight");
-  std::vector<std::vector<float>> b1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.bias");
-  std::vector<std::vector<float>> w2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.weight");
-  std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.bias");
-  std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight");
-  std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.bias");
+  std::vector<std::vector<float>> w1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.weight", 0);
+  std::vector<std::vector<float>> b1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.bias", 0);
+  std::vector<std::vector<float>> w2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.weight", 0);
+  std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.bias", 0);
+  std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight", 0);
+  std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.bias", 0);
 
   auto itemNNweight1Vector = maker.arrayVector<float>(w1, REAL());
   auto itemNNweight2Vector = maker.arrayVector<float>(w2, REAL());
@@ -940,7 +940,7 @@ RowVectorPtr FraudDetectionTest::writeDataToFile(std::string csvFilePath, int nu
 }
 
 
-std::vector<std::vector<float>> FraudDetectionTest::loadHDF5Array(const std::string& filename, const std::string& datasetName) {
+std::vector<std::vector<float>> FraudDetectionTest::loadHDF5Array(std::string& filename, std::string& datasetName, int doPrint) {
     /*if (!std::filesystem::exists(filename)) {
           throw std::runtime_error("File not found: " + filename);
     }*/
@@ -983,7 +983,11 @@ std::vector<std::vector<float>> FraudDetectionTest::loadHDF5Array(const std::str
     for (size_t i = 0; i < rows; ++i) {
         for (size_t j = 0; j < cols; ++j) {
             result[i][j] = flatData[i * cols + j];
+            if (doPrint == 1)
+                std::cout << result[i][j] << ", ";
         }
+        if (doPrint == 1)
+            std::cout << std::endl;
     }
 
     // Close the dataset and file
@@ -1704,12 +1708,14 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      RowVectorPtr customerRowVector = getCustomerData("resources/data/customer.csv");
      std::cout << "customerRowVector data generated" << std::endl;
 
-     std::vector<std::vector<float>> w1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.weight");
-     std::vector<std::vector<float>> b1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.bias");
-     std::vector<std::vector<float>> w2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.weight");
-     std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.bias");
-     std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight");
-     std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.bias");
+     std::cout << "printing w1" << std::endl;
+     std::vector<std::vector<float>> w1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.weight", 1);
+     std::cout << "printing b1" << std::endl;
+     std::vector<std::vector<float>> b1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.bias", 1);
+     std::vector<std::vector<float>> w2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.weight", 0);
+     std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.bias", 0);
+     std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight", 0);
+     std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.bias", 0);
 
      auto itemNNweight1Vector = maker.arrayVector<float>(w1, REAL());
      auto itemNNweight2Vector = maker.arrayVector<float>(w2, REAL());
