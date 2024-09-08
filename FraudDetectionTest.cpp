@@ -598,7 +598,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
 
   ~FraudDetectionTest() {}
 
-  void registerFunctions(std::string modelFilePath="resources/model/fraud_xgboost_1600_8", int numCols = 28);
+  void registerFunctions(std::string modelFilePath, int numCols);
   void registerNNFunctions(int numCols);
   void run( int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath, std::string orderDataFilePath);
   
@@ -1797,7 +1797,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 void FraudDetectionTest::run(int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath, std::string orderDataFilePath) {
 
   std::cout << "Option is " << option << std::endl;
-  registerFunctions(modelFilePath, numCols);
+  registerFunctions(modelFilePath, 9);
 
   if (option == 0) {
       //testingNestedLoopJoinWithPredicatePush(numDataSplits, dataBatchSize, numRows, numCols, dataFilePath, modelFilePath);
