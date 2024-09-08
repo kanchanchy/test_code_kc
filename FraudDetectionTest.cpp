@@ -972,6 +972,8 @@ std::vector<std::vector<float>> FraudDetectionTest::loadHDF5Array(const std::str
       throw std::runtime_error("Unsupported rank: " + std::to_string(rank));
     }
 
+    std::cout << "Num Rows: " << rows << "Num Columns" << cols << std::endl;
+
     // Read data into a 1D vector
     std::vector<float> flatData(rows * cols);
     dataset.read(flatData.data(), H5::PredType::NATIVE_FLOAT);
