@@ -733,7 +733,7 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
   exec::registerVectorFunction(
         "xgboost_fraud_predict",
         TreePrediction::signatures(),
-        std::make_unique<ForestPrediction>(xgboost_fraud_model_path));
+        std::make_unique<ForestPrediction>(xgboost_fraud_model_path, 9, true));
   std::cout << "Completed registering function for xgboost_fraud_predict" << std::endl;
 
 }
