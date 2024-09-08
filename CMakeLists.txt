@@ -187,7 +187,6 @@ include_directories( ${HDF5_INCLUDE_DIRS} )
 add_executable(fraud_detection_test tests/FraudDetectionTest.cpp)
 target_link_libraries(
   fraud_detection_test
-  xgboost::xgboost
   velox_aggregates
   velox_type
   velox_vector

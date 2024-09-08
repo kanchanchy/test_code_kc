@@ -729,11 +729,11 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
             std::make_unique<GetBinaryClass>());
   std::cout << "Completed registering function for is_anomalous" << std::endl;
 
-  std::string xgboost_fraud_model_path = "resources/model/fraud_xgboost_model.json";
+  std::string xgboost_fraud_model_path = "resources/model/fraud_xgboost_9_1600";
   exec::registerVectorFunction(
         "xgboost_fraud_predict",
-        XGBoostPrediction::signatures(),
-        std::make_unique<XGBoostPrediction>(xgboost_fraud_model_path.c_str(), numCols));
+        TreePrediction::signatures(),
+        std::make_unique<ForestPrediction>(xgboost_fraud_model_path));
   std::cout << "Completed registering function for xgboost_fraud_predict" << std::endl;
 
 }
@@ -1734,7 +1734,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
-                         
+
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
