@@ -535,8 +535,13 @@ class GetBinaryClass : public MLFunction {
         int32_t offset = inputProbs->offsetAt(i);
         float prob_0 = inputProbsValues->valueAt(offset);
         float prob_1 = inputProbsValues->valueAt(offset + 1);
-        int predicted_class = (prob_0 > prob_1) ? 0 : 1;
-        results.push_back(predicted_class);
+        if (std::isnan(prob_0) && std::isnan(prob_1)) {
+            results.push_back(0);
+        }
+        else {
+            int predicted_class = (prob_0 > prob_1) ? 0 : 1;
+            results.push_back(predicted_class);
+        }
     }
 
     VectorMaker maker{context.pool()};
@@ -1769,7 +1774,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.filter("xgboost_fraud_predict(all_features) >= 0.5")
                          .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          //.filter("get_binary_class(fraudulent_probs) == 1")
-                         //.project({"transaction_id"})
+                         .project({"transaction_id", "get_binary_class(fraudulent_probs)"})
                          .planNode();
    
  
