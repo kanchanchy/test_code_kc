@@ -1708,10 +1708,10 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      RowVectorPtr customerRowVector = getCustomerData("resources/data/customer.csv");
      std::cout << "customerRowVector data generated" << std::endl;
 
-     std::cout << "printing w1" << std::endl;
-     std::vector<std::vector<float>> w1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.weight", 1);
-     std::cout << "printing b1" << std::endl;
-     std::vector<std::vector<float>> b1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.bias", 1);
+     //std::cout << "printing w1" << std::endl;
+     std::vector<std::vector<float>> w1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.weight", 0);
+     //std::cout << "printing b1" << std::endl;
+     std::vector<std::vector<float>> b1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.bias", 0);
      std::vector<std::vector<float>> w2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.weight", 0);
      std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.bias", 0);
      std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight", 0);
@@ -1794,7 +1794,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.project({"transaction_id", "xgboost_label", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          .project({"transaction_id", "xgboost_label", fmt::format(dnn_fraud_model, "all_features") + " AS fraudulent_probs"})
                          //.filter("get_binary_class(fraudulent_probs) == 1")
-                         //.project({"transaction_id", "get_binary_class(fraudulent_probs)"})
+                         .project({"transaction_id", "xgboost_label", "get_binary_class(fraudulent_probs)"})
                          .planNode();
    
  
