@@ -722,13 +722,14 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
             "get_binary_class",
             GetBinaryClass::signatures(),
             std::make_unique<GetBinaryClass>());
-    std::cout << "Completed registering function for is_anomalous" << std::endl;
+  std::cout << "Completed registering function for is_anomalous" << std::endl;
 
-  /*std::string xgboost_fraud_model_path = "resources/model/fraud_xgboost_model.json";
+  std::string xgboost_fraud_model_path = "resources/model/fraud_xgboost_model.json";
   exec::registerVectorFunction(
         "xgboost_fraud_predict",
         XGBoostPrediction::signatures(),
-        std::make_unique<XGBoostPrediction>(xgboost_fraud_model_path, numCols, true));*/
+        std::make_unique<XGBoostPrediction>(xgboost_fraud_model_path.c_str(), numCols));
+  std::cout << "Completed registering function for xgboost_fraud_predict" << std::endl;
 
 }
 
@@ -1765,7 +1766,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"transaction_id", "transaction_features", "customer_features"}
                          )
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
-                         //.filter("xgboost_fraud_predict(all_features) >= 0.5")
+                         .filter("xgboost_fraud_predict(all_features) >= 0.5")
                          .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          .filter("get_binary_class(fraudulent_probs) == 1")
                          .project({"transaction_id"})
