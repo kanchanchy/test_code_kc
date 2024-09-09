@@ -535,7 +535,7 @@ class GetBinaryClass : public MLFunction {
         int32_t offset = inputProbs->offsetAt(i);
         float prob_0 = inputProbsValues->valueAt(offset);
         float prob_1 = inputProbsValues->valueAt(offset + 1);
-        if (std::isnan(prob_0) && std::isnan(prob_1)) {
+        if (std::isnan(prob_0) || std::isnan(prob_1)) {
             results.push_back(0);
         }
         else {
@@ -608,6 +608,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   RowVectorPtr getTransactionData(std::string filePath);
   RowVectorPtr getCustomerData(std::string filePath);
   std::vector<std::vector<float>> loadHDF5Array(const std::string& filename, const std::string& datasetName, int doPrint);
+  std::unordered_map<std::string, int> getCountryMap();
   
   void testingNestedLoopJoinWithPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
   void testingNestedLoopJoinWithoutPredicatePush(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
@@ -743,15 +744,21 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
           std::make_unique<ForestPrediction>(xgboost_fraud_transaction_path, 5, true));
     std::cout << "Completed registering function for xgboost_fraud_transaction" << std::endl;
 
+  exec::registerVectorFunction(
+        "relu", Relu::signatures(), std::make_unique<Relu>());
+
+  exec::registerVectorFunction(
+        "softmax", Softmax::signatures(), std::make_unique<Softmax>());
+
 }
 
 
 void FraudDetectionTest::registerNNFunctions(int numCols) {
 
-  RandomGenerator randomGenerator = RandomGenerator(-1, 1, 0);
+  /*RandomGenerator randomGenerator = RandomGenerator(-1, 1, 0);
   randomGenerator.setFloatRange(-1, 1);
 
-  /*std::vector<std::vector<float>> itemNNweight1 =
+  std::vector<std::vector<float>> itemNNweight1 =
       randomGenerator.genFloat2dVector(numCols, 16);
   auto itemNNweight1Vector = maker.arrayVector<float>(itemNNweight1, REAL());
 
@@ -940,6 +947,43 @@ RowVectorPtr FraudDetectionTest::writeDataToFile(std::string csvFilePath, int nu
 }
 
 
+std::unordered_map<std::string, int> FraudDetectionTest::getCountryMap() {
+    std::unordered_map<std::string, int> countryMap;
+
+    // Open the txt file
+    std::ifstream file("resources/model/country_mapping.txt");
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open the file!" << std::endl;
+        return 1;
+    }
+
+    std::string line;
+    // Read the file line by line
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::string key;
+        std::string value_str;
+
+        // Get the key before the comma
+        std::getline(ss, key, ',');
+
+        // Get the value after the comma
+        std::getline(ss, value_str);
+
+        // Convert the string value to an integer
+        int value = std::stoi(value_str);
+
+        // Insert into the unordered_map
+        countryMap[key] = value;
+    }
+
+    // Close the file
+    file.close();
+
+    return countryMap;
+}
+
+
 std::vector<std::vector<float>> FraudDetectionTest::loadHDF5Array(const std::string& filename, const std::string& datasetName, int doPrint) {
     /*if (!std::filesystem::exists(filename)) {
           throw std::runtime_error("File not found: " + filename);
@@ -972,7 +1016,7 @@ std::vector<std::vector<float>> FraudDetectionTest::loadHDF5Array(const std::str
       throw std::runtime_error("Unsupported rank: " + std::to_string(rank));
     }
 
-    std::cout << "Num Rows: " << rows << ", Num Columns" << cols << std::endl;
+    //std::cout << "Num Rows: " << rows << ", Num Columns " << cols << std::endl;
 
     // Read data into a 1D vector
     std::vector<float> flatData(rows * cols);
@@ -1192,8 +1236,8 @@ RowVectorPtr FraudDetectionTest::getCustomerData(std::string filePath) {
     std::vector<int> cBirthYear;
     std::vector<int> cBirthCountry;
 
-    std::unordered_map<std::string, int> countryMap;
-    int countryIndex = 0;
+    std::unordered_map<std::string, int> countryMap = getCountryMap();
+    int countryIndex = countryMap.size();
 
     int index = 0;
 
@@ -1696,7 +1740,7 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
 
 void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string orderFilePath, std::string modelFilePath) {
 
-     registerNNFunctions(9);
+     //registerNNFunctions(9);
      auto dataFile = TempFilePath::create();
                       
      std::string path = dataFile->path;
