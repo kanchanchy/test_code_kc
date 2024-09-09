@@ -955,7 +955,7 @@ std::unordered_map<std::string, int> FraudDetectionTest::getCountryMap() {
     std::ifstream file(filePath.c_str());
     if (!file.is_open()) {
         std::cerr << "Error: Could not open the file!" << std::endl;
-        return 1;
+        exit(1);
     }
 
     std::string line;
