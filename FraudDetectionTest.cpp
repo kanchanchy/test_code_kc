@@ -1058,9 +1058,6 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
     std::vector<int> oCustomerSk;
     std::vector<std::string> oWeekday;
     std::vector<std::string> oDate;
-
-    
-    int index = 0;
     
     std::string line;
 
@@ -1106,11 +1103,6 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
 
         }
 
-	    //inputArrayVector.push_back(curRow);
-        index ++;
-        if (index == 3000) {
-            break;
-        }
     }
 
     file.close();
@@ -1146,8 +1138,6 @@ RowVectorPtr FraudDetectionTest::getTransactionData(std::string filePath) {
     std::vector<int64_t> transactionId;
     std::vector<std::string> tTime;
 
-
-    int index = 0;
 
     std::string line;
 
@@ -1196,11 +1186,6 @@ RowVectorPtr FraudDetectionTest::getTransactionData(std::string filePath) {
 
         }
 
-	    //inputArrayVector.push_back(curRow);
-        index ++;
-        if (index == 10000) {
-            break;
-        }
     }
 
     file.close();
@@ -1239,8 +1224,6 @@ RowVectorPtr FraudDetectionTest::getCustomerData(std::string filePath) {
 
     std::unordered_map<std::string, int> countryMap = getCountryMap();
     int countryIndex = countryMap.size();
-
-    int index = 0;
 
     std::string line;
 
@@ -1310,11 +1293,6 @@ RowVectorPtr FraudDetectionTest::getCustomerData(std::string filePath) {
 
         }
 
-	    //inputArrayVector.push_back(curRow);
-        index ++;
-        if (index == 10000) {
-            break;
-        }
     }
 
     file.close();
@@ -1821,8 +1799,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
                          .filter("time_diff <= 7")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
-                         //.project({"o_customer_sk", "transaction_id", "transaction_features", fmt::format(anomaly_model, "transaction_features") + " AS anomaly_probs"})
-                         //.filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
+                         .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
                          .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
@@ -1836,10 +1813,9 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
                          .project({"transaction_id", "all_features", "xgboost_fraud_predict(all_features) as xgboost_label"})
                          //.filter("xgboost_fraud_predict(all_features) >= 0.5")
-                         //.project({"transaction_id", "xgboost_label", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          .project({"transaction_id", "xgboost_label", fmt::format(dnn_fraud_model, "all_features") + " AS fraudulent_probs"})
                          //.filter("get_binary_class(fraudulent_probs) == 1")
-                         .project({"transaction_id", "xgboost_label", "get_binary_class(fraudulent_probs)"})
+                         .project({"transaction_id", "xgboost_label", "get_binary_class(fraudulent_probs) as dnn_label"})
                          .planNode();
    
  
