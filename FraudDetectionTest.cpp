@@ -1644,42 +1644,6 @@ void FraudDetectionTest::testingHashJoinWithNeuralNetwork(int numDataSplits, int
      RowVectorPtr transactionRowVector = getTransactionDataSynthetic(numTransactions, numTransactionFeatures, numCustomers);
      
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
-     /*
-     RandomGenerator randomGenerator = RandomGenerator(-1, 1, 0);
-     randomGenerator.setFloatRange(-1, 1);
-
-     std::vector<std::vector<float>> itemNNweight1 = randomGenerator.genFloat2dVector(numCols, 32);
-     auto itemNNweight1Vector = maker.arrayVector<float>(itemNNweight1, REAL());
-     
-     std::vector<std::vector<float>> itemNNBias1 = randomGenerator.genFloat2dVector(32, 1);
-     auto itemNNBias1Vector = maker.arrayVector<float>(itemNNBias1, REAL());
-     
-     std::vector<std::vector<float>> itemNNweight2 = randomGenerator.genFloat2dVector(32, 16);
-     auto itemNNweight2Vector = maker.arrayVector<float>(itemNNweight2, REAL());
-     
-     std::vector<std::vector<float>> itemNNBias2 = randomGenerator.genFloat2dVector(16, 1);
-     auto itemNNBias2Vector = maker.arrayVector<float>(itemNNBias2, REAL());
-     
-     std::vector<std::vector<float>> itemNNweight3 = randomGenerator.genFloat2dVector(16, 2);
-     auto itemNNweight3Vector = maker.arrayVector<float>(itemNNweight3, REAL());
-     
-     std::vector<std::vector<float>> itemNNBias3 = randomGenerator.genFloat2dVector(2, 1);
-     auto itemNNBias3Vector = maker.arrayVector<float>(itemNNBias3, REAL());
-
-     std::string compute =  NNBuilder()
-                            .denseLayer(32, numCols,
-                            itemNNweight1Vector->elements()->values()->asMutable<float>(), 
-                            itemNNBias1Vector->elements()->values()->asMutable<float>(),
-                            NNBuilder::RELU)
-                            .denseLayer(16, 32,
-                            itemNNweight2Vector->elements()->values()->asMutable<float>(), 
-                            itemNNBias2Vector->elements()->values()->asMutable<float>(),
-                            NNBuilder::RELU)
-                            .denseLayer(2, 16,
-                            itemNNweight3Vector->elements()->values()->asMutable<float>(), 
-                            itemNNBias3Vector->elements()->values()->asMutable<float>(),
-                            NNBuilder::SOFTMAX)
-                            .build();*/
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
     
@@ -1762,16 +1726,6 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                                   NNBuilder::SOFTMAX)
                                   .build();
 
-     /*
-     int numCustomers = 100;
-     int numTransactions = 1000;
-     int numCustomerFeatures = 10;
-     int numTransactionFeatures = 18;
-     
-     // Retrieve the customer and transaction data
-     RowVectorPtr customerRowVector = getCustomerDataSynthetic(numCustomers, numCustomerFeatures);
-     RowVectorPtr transactionRowVector = getTransactionDataSynthetic(numTransactions, numTransactionFeatures, numCustomers);
-     */
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
@@ -1779,10 +1733,8 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
-                         //.project({"o_customer_sk", "o_order_id", "o_timestamp", "time_diff_in_days(o_timestamp, o_timestamp) as time_diff"})
                          .filter("o_timestamp IS NOT NULL")
                          .filter("is_weekday(o_timestamp) = 1")
-                         //.localPartition({"o_customer_sk"})
                          .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          .hashJoin({"o_customer_sk"},
                              {"t_sender"},
@@ -1790,7 +1742,6 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              .values({transactionRowVector})
                              .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
                              .filter("t_timestamp IS NOT NULL")
-                             //.localPartition({"t_sender"})
                              .planNode(),
                              "",
                              {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"},
@@ -1811,11 +1762,11 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"transaction_id", "transaction_features", "customer_features"}
                          )
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
-                         .project({"transaction_id", "all_features", "xgboost_fraud_predict(all_features) as xgboost_label"})
-                         //.filter("xgboost_fraud_predict(all_features) >= 0.5")
+                         .project({"transaction_id", "all_features"})
+                         .filter("xgboost_fraud_predict(all_features) >= 0.5")
                          .project({"transaction_id", "xgboost_label", fmt::format(dnn_fraud_model, "all_features") + " AS fraudulent_probs"})
                          //.filter("get_binary_class(fraudulent_probs) == 1")
-                         .project({"transaction_id", "xgboost_label", "get_binary_class(fraudulent_probs) as dnn_label"})
+                         .project({"transaction_id", "get_binary_class(fraudulent_probs) as dnn_label"})
                          .planNode();
    
  
