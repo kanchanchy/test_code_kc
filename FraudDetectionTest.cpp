@@ -234,30 +234,27 @@ class GetTransactionFeatures : public MLFunction {
     auto tTimestamps = decodedArray3->base()->as<FlatVector<int64_t>>();
 
     for (int i = 0; i < rows.size(); i++) {
-        int64_t totalOrder = totalOrders->valueAt(i);
+        float totalOrder = static_cast<float>(totalOrders->valueAt(i));
         float tAmount = tAmounts->valueAt(i);
-        int64_t timeDiff = timeDiffs->valueAt(i);
-        int64_t tTimestamp = tTimestamps->valueAt(i);
+        float timeDiff = static_cast<float>(timeDiffs->valueAt(i));
+        int64_t tTimestamp = static_cast<float>tTimestamps->valueAt(i);
 
         // Calculate the number of days since Unix epoch
-        int64_t daysSinceEpoch = tTimestamp / secondsInADay;
+        int64_t daysSinceEpochInt = tTimestamp / secondsInADay;
         // Unix epoch (Jan 1, 1970) was a Thursday, so dayOfWeek for epoch is 4 (0=Sunday, 6=Saturday)
         int dayOfWeekEpoch = 4;  // Thursday
         // Calculate the current day of the week (0=Sunday, ..., 6=Saturday)
-        int dayOfWeek = (daysSinceEpoch + dayOfWeekEpoch) % 7;
+        float dayOfWeek = static_cast<float>((daysSinceEpochInt + dayOfWeekEpoch) % 7);
+        float daysSinceEpoch = static_cast<float>(daysSinceEpochInt);
 
         std::vector<float> vec;
-        vec.push_back(static_cast<float>(totalOrder) * 1.0);
+        vec.push_back(totalOrder);
         vec.push_back(tAmount);
-        vec.push_back(static_cast<float>(timeDiff) * 1.0);
-        vec.push_back(static_cast<float>(dayOfWeek) * 1.0);
-        vec.push_back(static_cast<float>(daysSinceEpoch) * 1.0);
+        vec.push_back(timeDiff);
+        vec.push_back(dayOfWeek);
+        vec.push_back(daysSinceEpoch);
 
         results.push_back(vec);
-
-        if (i < 10) {
-            std::cout <<"Transaction features: " << vec << std::endl;
-        }
     }
 
     VectorMaker maker{context.pool()};
@@ -328,16 +325,16 @@ class GetCustomerFeatures : public MLFunction {
     auto cAges = decodedArray3->base()->as<FlatVector<int>>();
 
     for (int i = 0; i < rows.size(); i++) {
-        int cAddressNum = cAddressNums->valueAt(i);
-        int cCustFlag = cCustFlags->valueAt(i);
-        int cBirthCountry = cBirthCountries->valueAt(i);
-        int cAge = cAges->valueAt(i);
+        float cAddressNum = static_cast<float>(cAddressNums->valueAt(i));
+        float cCustFlag = static_cast<float>(cCustFlags->valueAt(i));
+        float cBirthCountry = static_cast<float>(cBirthCountries->valueAt(i));
+        float cAge = static_cast<float>(cAges->valueAt(i));
 
         std::vector<float> vec;
-        vec.push_back(static_cast<float>(cAddressNum) * 1.0);
-        vec.push_back(static_cast<float>(cCustFlag) * 1.0);
-        vec.push_back(static_cast<float>(cBirthCountry) * 1.0);
-        vec.push_back(static_cast<float>(cAge) * 1.0);
+        vec.push_back(cAddressNum);
+        vec.push_back(cCustFlag);
+        vec.push_back(cBirthCountry);
+        vec.push_back(cAge);
 
         results.push_back(vec);
     }
