@@ -247,11 +247,11 @@ class GetTransactionFeatures : public MLFunction {
         int dayOfWeek = (daysSinceEpoch + dayOfWeekEpoch) % 7;
 
         std::vector<float> vec;
-        vec.push_back(static_cast<float>(totalOrder));
+        vec.push_back(static_cast<float>(totalOrder) * 1.0);
         vec.push_back(tAmount);
-        vec.push_back(static_cast<float>(timeDiff));
-        vec.push_back(static_cast<float>(dayOfWeek));
-        vec.push_back(static_cast<float>(daysSinceEpoch));
+        vec.push_back(static_cast<float>(timeDiff) * 1.0);
+        vec.push_back(static_cast<float>(dayOfWeek) * 1.0);
+        vec.push_back(static_cast<float>(daysSinceEpoch) * 1.0);
 
         results.push_back(vec);
 
@@ -334,10 +334,10 @@ class GetCustomerFeatures : public MLFunction {
         int cAge = cAges->valueAt(i);
 
         std::vector<float> vec;
-        vec.push_back(static_cast<float>(cAddressNum));
-        vec.push_back(static_cast<float>(cCustFlag));
-        vec.push_back(static_cast<float>(cBirthCountry));
-        vec.push_back(static_cast<float>(cAge));
+        vec.push_back(static_cast<float>(cAddressNum) * 1.0);
+        vec.push_back(static_cast<float>(cCustFlag) * 1.0);
+        vec.push_back(static_cast<float>(cBirthCountry) * 1.0);
+        vec.push_back(static_cast<float>(cAge) * 1.0);
 
         results.push_back(vec);
     }
