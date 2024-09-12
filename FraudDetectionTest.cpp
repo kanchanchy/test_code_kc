@@ -94,16 +94,15 @@ class IsWeekday : public MLFunction {
     for (int i = 0; i < rows.size(); i++) {
         int64_t timestamp = inputTimes->valueAt(i);
 
-        /*std::time_t time = static_cast<std::time_t>(timestamp);
+        std::time_t time = static_cast<std::time_t>(timestamp);
         std::tm* time_info = std::localtime(&time);
-        int dayOfWeek = time_info->tm_wday;*/
+        int dayOfWeek = time_info->tm_wday;
 
-        // Calculate the number of days since Unix epoch
-        int64_t daysSinceEpoch = timestamp / secondsInADay;
+        /*int64_t daysSinceEpoch = timestamp / secondsInADay;
         // Unix epoch (Jan 1, 1970) was a Thursday, so dayOfWeek for epoch is 4 (0=Sunday, 6=Saturday)
         int dayOfWeekEpoch = 4;  // Thursday
         // Calculate the current day of the week (0=Sunday, ..., 6=Saturday)
-        int dayOfWeek = (daysSinceEpoch + dayOfWeekEpoch) % 7;
+        int dayOfWeek = (daysSinceEpoch + dayOfWeekEpoch) % 7;*/
 
         // Return true if the day is Saturday (6) or Sunday (0)
         if (dayOfWeek == 0 || dayOfWeek == 6) {
@@ -234,18 +233,18 @@ class GetTransactionFeatures : public MLFunction {
     auto tTimestamps = decodedArray3->base()->as<FlatVector<int64_t>>();
 
     for (int i = 0; i < rows.size(); i++) {
-        float totalOrder = (static_cast<float>(totalOrders->valueAt(i)))/62.0;
-        float tAmount = (tAmounts->valueAt(i))/12849.0;
-        float timeDiff = (static_cast<float>(timeDiffs->valueAt(i)))/706.0;
+        float totalOrder = (static_cast<float>(totalOrders->valueAt(i)))/79.0;
+        float tAmount = (tAmounts->valueAt(i))/16047.420505;
+        float timeDiff = (static_cast<float>(timeDiffs->valueAt(i)))/729.0;
         int64_t tTimestamp = static_cast<float>(tTimestamps->valueAt(i));
 
+        // Calculate day of week
+        std::time_t time = static_cast<std::time_t>(tTimestamp);
+        std::tm* time_info = std::localtime(&time);
+        float dayOfWeek = (static_cast<float>(time_info->tm_wday))/4.0;
+
         // Calculate the number of days since Unix epoch
-        int64_t daysSinceEpochInt = tTimestamp / secondsInADay;
-        // Unix epoch (Jan 1, 1970) was a Thursday, so dayOfWeek for epoch is 4 (0=Sunday, 6=Saturday)
-        int dayOfWeekEpoch = 4;  // Thursday
-        // Calculate the current day of the week (0=Sunday, ..., 6=Saturday)
-        float dayOfWeek = (static_cast<float>((daysSinceEpochInt + dayOfWeekEpoch) % 7))/6.0;
-        float daysSinceEpoch = (static_cast<float>(daysSinceEpochInt))/15217.0;
+        float daysSinceEpoch = (static_cast<float>(tTimestamp / secondsInADay))/15338.0;
 
         std::vector<float> vec;
         vec.push_back(totalOrder);
@@ -325,10 +324,10 @@ class GetCustomerFeatures : public MLFunction {
     auto cAges = decodedArray3->base()->as<FlatVector<int>>();
 
     for (int i = 0; i < rows.size(); i++) {
-        float cAddressNum = (static_cast<float>(cAddressNums->valueAt(i)))/26803.0;
+        float cAddressNum = (static_cast<float>(cAddressNums->valueAt(i)))/35352.0;
         float cCustFlag = static_cast<float>(cCustFlags->valueAt(i));
-        float cBirthCountry = (static_cast<float>(cBirthCountries->valueAt(i)))/206.0;
-        float cAge = (static_cast<float>(cAges->valueAt(i)))/93.0;
+        float cBirthCountry = (static_cast<float>(cBirthCountries->valueAt(i)))/211.0;
+        float cAge = (static_cast<float>(cAges->valueAt(i)))/94.0;
 
         std::vector<float> vec;
         vec.push_back(cAddressNum);
@@ -1305,9 +1304,8 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
-                         .project({"o_customer_sk", "o_order_id", "o_timestamp", "is_weekday(o_timestamp) as weekday"})
                          .filter("o_timestamp IS NOT NULL")
-                         .filter("weekday = 1")
+                         .filter("is_weekday(o_timestamp) = 1")
                          .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          .hashJoin({"o_customer_sk"},
                              {"t_sender"},
@@ -1323,7 +1321,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
                          //.filter("time_diff <= 150")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
-                         .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
+                         //.filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
                          .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
