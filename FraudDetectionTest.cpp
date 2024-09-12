@@ -1300,6 +1300,50 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
 
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values(orderRowVector)
+                         .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
+                         .filter("o_timestamp IS NOT NULL")
+                         .filter("is_weekday(o_timestamp) = 1")
+                         //.partialAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
+                         //.localPartition({"o_customer_sk"})
+                         //.finalAggregation()
+                         .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
+                         .hashJoin({"o_customer_sk"},
+                             {"t_sender"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values(transactionRowVector)
+                             .localPartition({"t_sender"})
+                             .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
+                             .filter("t_timestamp IS NOT NULL")
+                             .planNode(),
+                             "",
+                             {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"},
+                             core::JoinType::kInner
+                         )
+                         .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
+                         .filter("time_diff <= 500")
+                         .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
+                         .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
+                         .hashJoin({"o_customer_sk"},
+                             {"c_customer_sk"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values(customerRowVector)
+                             .localPartition({"c_customer_sk"})
+                             .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_country", "get_age(c_birth_year) as c_age"})
+                             .project({"c_customer_sk", "get_customer_features(c_address_num, c_cust_flag, c_birth_country, c_age) as customer_features"})
+                             .planNode(),
+                             "",
+                             {"transaction_id", "transaction_features", "customer_features"}
+                         )
+                         .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
+                         .project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
+                         .filter("get_binary_class(fraudulent_probs) = 1")
+                         .filter("xgboost_fraud_predict(all_features) >= 0.5")
+                         .project({"transaction_id"})
+                         .planNode();
+
+
+     auto myPlanParallel = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values(batchesOrder)
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
                          .filter("o_timestamp IS NOT NULL")
@@ -1344,8 +1388,8 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
    
  
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
-    auto results = exec::test::AssertQueryBuilder(myPlan).maxDrivers(4).copyResults(pool_.get());
+    auto results = exec::test::AssertQueryBuilder(myPlan).copyResults(pool_.get());
+    //auto results = exec::test::AssertQueryBuilder(myPlanParallel).maxDrivers(4).copyResults(pool_.get());
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
