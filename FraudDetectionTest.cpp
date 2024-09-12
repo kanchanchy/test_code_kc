@@ -1336,7 +1336,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.project({"transaction_id", "all_features", fmt::format(dnn_fraud_model, "all_features") + " AS fraudulent_probs"})
                          .project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          .filter("get_binary_class(fraudulent_probs) = 1")
-                         .filter("xgboost_fraud_predict(all_features) >= 0.3")
+                         .filter("xgboost_fraud_predict(all_features) >= 0.25")
                          .project({"transaction_id"})
                          .planNode();
    
