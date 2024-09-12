@@ -740,34 +740,34 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
       std::make_unique<MatrixMultiply>(
           std::move(itemNNweight1Vector->elements()->values()->asMutable<float>()),
           numCols,
-          32));
+          64));
 
   exec::registerVectorFunction(
       "mat_vector_add_1",
       MatrixVectorAddition::signatures(),
       std::make_unique<MatrixVectorAddition>(
-          std::move(itemNNBias1Vector->elements()->values()->asMutable<float>()), 32));
+          std::move(itemNNBias1Vector->elements()->values()->asMutable<float>()), 64));
 
   exec::registerVectorFunction(
       "mat_mul_2",
       MatrixMultiply::signatures(),
       std::make_unique<MatrixMultiply>(
           std::move(itemNNweight2Vector->elements()->values()->asMutable<float>()),
-          32,
-          16));
+          64,
+          32));
 
   exec::registerVectorFunction(
       "mat_vector_add_2",
       MatrixVectorAddition::signatures(),
       std::make_unique<MatrixVectorAddition>(
-          std::move(itemNNBias2Vector->elements()->values()->asMutable<float>()), 16));
+          std::move(itemNNBias2Vector->elements()->values()->asMutable<float>()), 32));
 
   exec::registerVectorFunction(
       "mat_mul_3",
       MatrixMultiply::signatures(),
       std::make_unique<MatrixMultiply>(
           std::move(itemNNweight3Vector->elements()->values()->asMutable<float>()),
-          16,
+          32,
           2));
 
   exec::registerVectorFunction(
@@ -1322,7 +1322,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .filter("time_diff <= 300")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
                          .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
-                         /*.hashJoin({"o_customer_sk"},
+                         .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values({customerRowVector})
@@ -1336,7 +1336,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.project({"transaction_id", "all_features", fmt::format(dnn_fraud_model, "all_features") + " AS fraudulent_probs"})
                          //.project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
-                         .filter("get_binary_class(fraudulent_probs) = 1")*/
+                         .filter("get_binary_class(fraudulent_probs) = 1")
                          //.filter("xgboost_fraud_predict(all_features) >= 0.5")
                          //.project({"transaction_id"})
                          .planNode();
