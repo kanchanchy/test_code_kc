@@ -1303,6 +1303,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
+    std::cout << "Results Size: " << results->size() << std::endl;
     std::cout << results->toString(0, 5) << std::endl;
    
     std::cout << "Time for Executing with Real Data (sec): " << std::endl;
