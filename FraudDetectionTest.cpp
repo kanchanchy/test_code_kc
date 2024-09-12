@@ -1261,8 +1261,9 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
-                         .filter("o_timestamp IS NOT NULL")
-                         //.filter("is_weekday(o_timestamp) = 1")
+                         .project({"o_customer_sk", "o_order_id", "o_timestamp", "is_weekday(o_timestamp) as weekday"})
+                         /*.filter("o_timestamp IS NOT NULL")
+                         .filter("is_weekday(o_timestamp) = 1")
                          .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          .hashJoin({"o_customer_sk"},
                              {"t_sender"},
@@ -1294,7 +1295,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"transaction_id", "all_features", fmt::format(dnn_fraud_model, "all_features") + " AS fraudulent_probs"})
                          .filter("get_binary_class(fraudulent_probs) = 1")
                          .filter("xgboost_fraud_predict(all_features) >= 0.5")
-                         .project({"transaction_id"})
+                         .project({"transaction_id"})*/
                          .planNode();
    
  
