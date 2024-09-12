@@ -1308,8 +1308,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.localPartition({"o_customer_sk"})
                          //.finalAggregation()
                          .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
-                         .orderBy({fmt::format("{} DESC NULLS FIRST", "o_customer_sk")}, false)
-                         /*.hashJoin({"o_customer_sk"},
+                         .hashJoin({"o_customer_sk"},
                              {"t_sender"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values({transactionRowVector})
@@ -1318,11 +1317,11 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              .filter("t_timestamp IS NOT NULL")
                              .planNode(),
                              "",
-                             {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"},
-                             core::JoinType::kInner
+                             {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"}
                          )
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
-                         .filter("time_diff <= 500")
+                         .orderBy({fmt::format("{} DESC NULLS FIRST", "transaction_id")}, false)
+                         /*.filter("time_diff <= 500")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
                          .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
                          .hashJoin({"o_customer_sk"},
@@ -1353,9 +1352,8 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .partialAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          .localPartition({"o_customer_sk"})
                          .finalAggregation()
-                         .orderBy({fmt::format("{} DESC NULLS FIRST", "o_customer_sk")}, false)
                          //.singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
-                         /*.hashJoin({"o_customer_sk"},
+                         .hashJoin({"o_customer_sk"},
                              {"t_sender"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values(batchesTransaction)
@@ -1364,11 +1362,11 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              .filter("t_timestamp IS NOT NULL")
                              .planNode(),
                              "",
-                             {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"},
-                             core::JoinType::kInner
+                             {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"}
                          )
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
-                         .filter("time_diff <= 500")
+                         .orderBy({fmt::format("{} DESC NULLS FIRST", "transaction_id")}, false)
+                         /*.filter("time_diff <= 500")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
                          .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
                          .hashJoin({"o_customer_sk"},
