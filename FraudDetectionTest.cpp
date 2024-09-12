@@ -1321,8 +1321,8 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          )
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
                          .orderBy({fmt::format("{} DESC NULLS FIRST", "transaction_id")}, false)
-                         /*.filter("time_diff <= 500")
-                         .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
+                         .filter("time_diff <= 500")
+                         /*.project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
                          .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
                          .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
@@ -1366,8 +1366,8 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          )
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
                          .orderBy({fmt::format("{} DESC NULLS FIRST", "transaction_id")}, false)
-                         /*.filter("time_diff <= 500")
-                         .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
+                         .filter("time_diff <= 500")
+                         /*.project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
                          .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
                          .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
