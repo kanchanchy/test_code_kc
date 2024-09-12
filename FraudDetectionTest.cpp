@@ -93,9 +93,17 @@ class IsWeekday : public MLFunction {
     const int secondsInADay = 86400;
     for (int i = 0; i < rows.size(); i++) {
         int64_t timestamp = inputTimes->valueAt(i);
-        std::time_t time = static_cast<std::time_t>(timestamp);
+
+        /*std::time_t time = static_cast<std::time_t>(timestamp);
         std::tm* time_info = std::localtime(&time);
-        int dayOfWeek = time_info->tm_wday;
+        int dayOfWeek = time_info->tm_wday;*/
+
+        // Calculate the number of days since Unix epoch
+        int64_t daysSinceEpoch = timestamp / secondsInADay;
+        // Unix epoch (Jan 1, 1970) was a Thursday, so dayOfWeek for epoch is 4 (0=Sunday, 6=Saturday)
+        int dayOfWeekEpoch = 4;  // Thursday
+        // Calculate the current day of the week (0=Sunday, ..., 6=Saturday)
+        int dayOfWeek = (daysSinceEpoch + dayOfWeekEpoch) % 7;
 
         // Return true if the day is Saturday (6) or Sunday (0)
         if (dayOfWeek == 0 || dayOfWeek == 6) {
