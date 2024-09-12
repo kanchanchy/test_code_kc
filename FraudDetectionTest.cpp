@@ -234,14 +234,14 @@ class GetTransactionFeatures : public MLFunction {
 
     for (int i = 0; i < rows.size(); i++) {
         float totalOrder = (static_cast<float>(totalOrders->valueAt(i)))/79.0;
-        float tAmount = (tAmounts->valueAt(i))/16047.420505;
+        float tAmount = (tAmounts->valueAt(i))/16048.0;
         float timeDiff = (static_cast<float>(timeDiffs->valueAt(i)))/729.0;
         int64_t tTimestamp = static_cast<float>(tTimestamps->valueAt(i));
 
         // Calculate day of week
         std::time_t time = static_cast<std::time_t>(tTimestamp);
         std::tm* time_info = std::localtime(&time);
-        float dayOfWeek = (static_cast<float>(time_info->tm_wday))/4.0;
+        float dayOfWeek = (static_cast<float>(time_info->tm_wday))/6.0;
 
         // Calculate the number of days since Unix epoch
         float daysSinceEpoch = (static_cast<float>(tTimestamp / secondsInADay))/15338.0;
@@ -740,34 +740,34 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
       std::make_unique<MatrixMultiply>(
           std::move(itemNNweight1Vector->elements()->values()->asMutable<float>()),
           numCols,
-          64));
+          32));
 
   exec::registerVectorFunction(
       "mat_vector_add_1",
       MatrixVectorAddition::signatures(),
       std::make_unique<MatrixVectorAddition>(
-          std::move(itemNNBias1Vector->elements()->values()->asMutable<float>()), 64));
+          std::move(itemNNBias1Vector->elements()->values()->asMutable<float>()), 32));
 
   exec::registerVectorFunction(
       "mat_mul_2",
       MatrixMultiply::signatures(),
       std::make_unique<MatrixMultiply>(
           std::move(itemNNweight2Vector->elements()->values()->asMutable<float>()),
-          64,
-          32));
+          32,
+          16));
 
   exec::registerVectorFunction(
       "mat_vector_add_2",
       MatrixVectorAddition::signatures(),
       std::make_unique<MatrixVectorAddition>(
-          std::move(itemNNBias2Vector->elements()->values()->asMutable<float>()), 32));
+          std::move(itemNNBias2Vector->elements()->values()->asMutable<float>()), 16));
 
   exec::registerVectorFunction(
       "mat_mul_3",
       MatrixMultiply::signatures(),
       std::make_unique<MatrixMultiply>(
           std::move(itemNNweight3Vector->elements()->values()->asMutable<float>()),
-          32,
+          16,
           2));
 
   exec::registerVectorFunction(
