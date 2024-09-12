@@ -463,7 +463,7 @@ class DateToTimestamp : public MLFunction {
     for (int i = 0; i < rows.size(); i++) {
       StringView val = decodedStringInput->valueAt<StringView>(i);
       //std::string inputStr = std::string(val);
-      std::string inputStr = "2024-09-11";
+      std::string inputStr = "2024-09-11T00:00";
 
       std::istringstream ss(inputStr);
       ss >> std::get_time(&t, dateFormat);
@@ -1262,7 +1262,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
-                         .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
+                         .project({"o_customer_sk", "o_order_id", "date_to_timestamp_2(o_date) AS o_timestamp"})
                          .project({"o_customer_sk", "o_order_id", "o_timestamp", "is_weekday(o_timestamp) as weekday"})
                          /*.filter("o_timestamp IS NOT NULL")
                          //.filter("is_weekday(o_timestamp) = 1")
