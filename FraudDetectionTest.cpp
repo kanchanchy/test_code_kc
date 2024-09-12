@@ -1291,7 +1291,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"transaction_id", "transaction_features", "customer_features"}
                          )
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
-                         .project({"transaction_id", "all_features", fmt::format(dnn_fraud_model, "all_features") + " AS fraudulent_probs"})
+                         //.project({"transaction_id", "all_features", fmt::format(dnn_fraud_model, "all_features") + " AS fraudulent_probs"})
                          //.filter("get_binary_class(fraudulent_probs) = 1")
                          //.filter("xgboost_fraud_predict(all_features) >= 0.5")
                          //.project({"transaction_id"})
