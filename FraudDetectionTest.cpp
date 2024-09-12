@@ -647,7 +647,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
 
 void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCols) {
 
-  std::cout <<"To register function for TreePrediction" << std::endl;
+  /*std::cout <<"To register function for TreePrediction" << std::endl;
 
   exec::registerVectorFunction(
       "decision_tree_predict",
@@ -666,7 +666,7 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
   exec::registerVectorFunction(
       "concat_vectors",
       Concat::signatures(),
-      std::make_unique<Concat>(10, 18));
+      std::make_unique<Concat>(10, 18));*/
   
   exec::registerVectorFunction(
       "is_weekday",
@@ -735,11 +735,11 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
           std::make_unique<ForestPrediction>(xgboost_fraud_transaction_path, 5, true));
     std::cout << "Completed registering function for xgboost_fraud_transaction" << std::endl;
 
-  exec::registerVectorFunction(
+  /*exec::registerVectorFunction(
         "relu", Relu::signatures(), std::make_unique<Relu>());
 
   exec::registerVectorFunction(
-        "softmax", Softmax::signatures(), std::make_unique<Softmax>());
+        "softmax", Softmax::signatures(), std::make_unique<Softmax>());*/
 
 }
 
@@ -1229,8 +1229,8 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      std::vector<std::vector<float>> b1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.bias", 0);
      std::vector<std::vector<float>> w2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.weight", 0);
      std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.bias", 0);
-     std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight", 1);
-     std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.bias", 1);
+     std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight", 0);
+     std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.bias", 0);
 
      auto itemNNweight1Vector = maker.arrayVector<float>(w1, REAL());
      auto itemNNweight2Vector = maker.arrayVector<float>(w2, REAL());
