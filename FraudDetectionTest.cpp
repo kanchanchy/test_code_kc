@@ -233,9 +233,9 @@ class GetTransactionFeatures : public MLFunction {
     auto tTimestamps = decodedArray3->base()->as<FlatVector<int64_t>>();
 
     for (int i = 0; i < rows.size(); i++) {
-        float totalOrder = (static_cast<float>(totalOrders->valueAt(i)))/79.0;
-        float tAmount = (tAmounts->valueAt(i))/16048.0;
-        float timeDiff = (static_cast<float>(timeDiffs->valueAt(i)))/729.0;
+        float totalOrder = (static_cast<float>(totalOrders->valueAt(i)))/85.0;
+        float tAmount = (tAmounts->valueAt(i))/20000.0;
+        float timeDiff = (static_cast<float>(timeDiffs->valueAt(i)))/750.0;
         int64_t tTimestamp = static_cast<float>(tTimestamps->valueAt(i));
 
         // Calculate day of week
@@ -244,7 +244,7 @@ class GetTransactionFeatures : public MLFunction {
         float dayOfWeek = (static_cast<float>(time_info->tm_wday))/6.0;
 
         // Calculate the number of days since Unix epoch
-        float daysSinceEpoch = (static_cast<float>(tTimestamp / secondsInADay))/15338.0;
+        float daysSinceEpoch = (static_cast<float>(tTimestamp / secondsInADay))/16000.0;
 
         std::vector<float> vec;
         vec.push_back(totalOrder);
@@ -324,7 +324,7 @@ class GetCustomerFeatures : public MLFunction {
     auto cAges = decodedArray3->base()->as<FlatVector<int>>();
 
     for (int i = 0; i < rows.size(); i++) {
-        float cAddressNum = (static_cast<float>(cAddressNums->valueAt(i)))/35352.0;
+        float cAddressNum = (static_cast<float>(cAddressNums->valueAt(i)))/35500.0;
         float cCustFlag = static_cast<float>(cCustFlags->valueAt(i));
         float cBirthCountry = (static_cast<float>(cBirthCountries->valueAt(i)))/211.0;
         float cAge = (static_cast<float>(cAges->valueAt(i)))/94.0;
