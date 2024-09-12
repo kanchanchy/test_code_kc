@@ -1282,15 +1282,15 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      for (int i = 0; i < batch_counts; ++i) {
          int start = i * batchSizeOrder;
          int end = (i == (batch_counts - 1)) ? totalRowsOrder : (i + 1) * batchSizeOrder;  // Handle remainder for last batch
-         batchesOrder.push_back(orderRowVector->slice(start, end - start));
+         batchesOrder.push_back(std::dynamic_pointer_cast<RowVector>(orderRowVector->slice(start, end - start)));
 
          start = i * batchSizeTransaction;
          end = (i == (batch_counts - 1)) ? totalRowsTransaction : (i + 1) * batchSizeTransaction;  // Handle remainder for last batch
-         batchesTransaction.push_back(transactionRowVector->slice(start, end - start));
+         batchesTransaction.push_back(std::dynamic_pointer_cast<RowVector>(transactionRowVector->slice(start, end - start)));
 
          start = i * batchSizeCustomer;
          end = (i == (batch_counts - 1)) ? totalRowsCustomer : (i + 1) * batchSizeCustomer;  // Handle remainder for last batch
-         batchesCustomer.push_back(customerRowVector->slice(start, end - start));
+         batchesCustomer.push_back(std::dynamic_pointer_cast<RowVector>(customerRowVector->slice(start, end - start)));
      }
 
      registerNNFunctions(9);
