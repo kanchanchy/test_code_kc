@@ -458,7 +458,7 @@ class DateToTimestamp : public MLFunction {
     auto decodedStringInput = decodedStringHolder.get();
 
     std::vector<int64_t> results;
-    struct std::tm t;
+    struct std::tm t = {};
 
     for (int i = 0; i < rows.size(); i++) {
       StringView val = decodedStringInput->valueAt<StringView>(i);
