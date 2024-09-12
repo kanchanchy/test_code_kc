@@ -741,17 +741,13 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
       std::make_unique<MatrixMultiply>(
           std::move(itemNNweight1Vector->elements()->values()->asMutable<float>()),
           numCols,
-          32),
-          {},
-          true);
+          32));
 
   exec::registerVectorFunction(
       "mat_vector_add_1",
       MatrixVectorAddition::signatures(),
       std::make_unique<MatrixVectorAddition>(
-          std::move(itemNNBias1Vector->elements()->values()->asMutable<float>()), 32),
-          {},
-          true);
+          std::move(itemNNBias1Vector->elements()->values()->asMutable<float>()), 32));
 
   exec::registerVectorFunction(
       "mat_mul_2",
@@ -759,17 +755,13 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
       std::make_unique<MatrixMultiply>(
           std::move(itemNNweight2Vector->elements()->values()->asMutable<float>()),
           32,
-          16),
-          {},
-          true);
+          16));
 
   exec::registerVectorFunction(
       "mat_vector_add_2",
       MatrixVectorAddition::signatures(),
       std::make_unique<MatrixVectorAddition>(
-          std::move(itemNNBias2Vector->elements()->values()->asMutable<float>()), 16),
-          {},
-          true);
+          std::move(itemNNBias2Vector->elements()->values()->asMutable<float>()), 16));
 
   exec::registerVectorFunction(
       "mat_mul_3",
@@ -777,17 +769,13 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
       std::make_unique<MatrixMultiply>(
           std::move(itemNNweight3Vector->elements()->values()->asMutable<float>()),
           16,
-          2),
-          {},
-          true);
+          2));
 
   exec::registerVectorFunction(
       "mat_vector_add_3",
       MatrixVectorAddition::signatures(),
       std::make_unique<MatrixVectorAddition>(
-          std::move(itemNNBias3Vector->elements()->values()->asMutable<float>()), 2),
-          {},
-          true);
+          std::move(itemNNBias3Vector->elements()->values()->asMutable<float>()), 2));
 
   exec::registerVectorFunction(
       "relu", Relu::signatures(), std::make_unique<Relu>(),
