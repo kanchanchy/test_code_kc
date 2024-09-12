@@ -89,30 +89,21 @@ class IsWeekday : public MLFunction {
     exec::LocalDecodedVector vecHolder(context, *baseVec, rows);
     auto decodedArray = vecHolder.get();
     auto inputTimes = decodedArray->base()->as<FlatVector<int64_t>>();
-    //auto inputTimes = args[0]->as<FlatVector<int64_t>>();
 
     const int secondsInADay = 86400;
     for (int i = 0; i < rows.size(); i++) {
         int64_t timestamp = inputTimes->valueAt(i);
-        // Calculate the number of days since Unix epoch
-        /*int64_t daysSinceEpoch = timestamp / secondsInADay;
-        // Unix epoch (Jan 1, 1970) was a Thursday, so dayOfWeek for epoch is 4 (0=Sunday, 6=Saturday)
-        int dayOfWeekEpoch = 4;  // Thursday
-        // Calculate the current day of the week (0=Sunday, ..., 6=Saturday)
-        int dayOfWeek = (daysSinceEpoch + dayOfWeekEpoch) % 7;*/
-
         std::time_t time = static_cast<std::time_t>(timestamp);
         std::tm* time_info = std::localtime(&time);
         int dayOfWeek = time_info->tm_wday;
 
         // Return true if the day is Saturday (6) or Sunday (0)
-        /*if (dayOfWeek == 0 || dayOfWeek == 6) {
+        if (dayOfWeek == 0 || dayOfWeek == 6) {
             results.push_back(0);
         }
         else {
             results.push_back(1);
-        }*/
-        results.push_back(dayOfWeek);
+        }
     }
 
     VectorMaker maker{context.pool()};
@@ -462,8 +453,7 @@ class DateToTimestamp : public MLFunction {
 
     for (int i = 0; i < rows.size(); i++) {
       StringView val = decodedStringInput->valueAt<StringView>(i);
-      //std::string inputStr = std::string(val);
-      std::string inputStr = "2024-09-11T00:00";
+      std::string inputStr = std::string(val);
 
       std::istringstream ss(inputStr);
       ss >> std::get_time(&t, dateFormat);
@@ -1262,10 +1252,9 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
-                         .project({"o_customer_sk", "o_order_id", "date_to_timestamp_2(o_date) AS o_timestamp"})
-                         .project({"o_customer_sk", "o_order_id", "o_timestamp", "is_weekday(o_timestamp) as weekday"})
-                         /*.filter("o_timestamp IS NOT NULL")
-                         //.filter("is_weekday(o_timestamp) = 1")
+                         .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
+                         .filter("o_timestamp IS NOT NULL")
+                         .filter("is_weekday(o_timestamp) = 1")
                          .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          .hashJoin({"o_customer_sk"},
                              {"t_sender"},
@@ -1279,7 +1268,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              core::JoinType::kInner
                          )
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
-                         //.filter("time_diff <= 90")
+                         .filter("time_diff <= 28")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
                          .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
                          .hashJoin({"o_customer_sk"},
@@ -1297,7 +1286,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"transaction_id", "all_features", fmt::format(dnn_fraud_model, "all_features") + " AS fraudulent_probs"})
                          .filter("get_binary_class(fraudulent_probs) = 1")
                          .filter("xgboost_fraud_predict(all_features) >= 0.5")
-                         .project({"transaction_id"})*/
+                         .project({"transaction_id"})
                          .planNode();
    
  
