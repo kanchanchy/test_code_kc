@@ -601,6 +601,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   ~FraudDetectionTest() {}
 
   void registerFunctions(std::string modelFilePath, int numCols);
+  void registerNNFunctions(int numCols);
   void run( int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath, std::string orderDataFilePath);
 
   RowVectorPtr getOrderData(std::string filePath);
@@ -647,27 +648,6 @@ class FraudDetectionTest : public HiveConnectorTestBase {
 };
 
 void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCols) {
-
-  /*std::cout <<"To register function for TreePrediction" << std::endl;
-
-  exec::registerVectorFunction(
-      "decision_tree_predict",
-      TreePrediction::signatures(),
-      std::make_unique<TreePrediction>(0, "resources/model/fraud_xgboost_10_8/0.txt", 28, false));
-
-  std::cout << "To register function for XGBoost Prediction" << std::endl;
-
-  exec::registerVectorFunction(
-      "xgboost_predict",
-      TreePrediction::signatures(),
-      std::make_unique<ForestPrediction>(modelFilePath, numCols, true));
-
-  std::cout << "To register function for Concatenation" << std::endl;
-
-  exec::registerVectorFunction(
-      "concat_vectors",
-      Concat::signatures(),
-      std::make_unique<Concat>(10, 18));*/
   
   exec::registerVectorFunction(
       "is_weekday",
@@ -736,11 +716,88 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
           std::make_unique<ForestPrediction>(xgboost_fraud_transaction_path, 5, true));
     std::cout << "Completed registering function for xgboost_fraud_transaction" << std::endl;
 
-  /*exec::registerVectorFunction(
-        "relu", Relu::signatures(), std::make_unique<Relu>());
+}
+
+
+void FraudDetectionTest::registerNNFunctions(int numCols) {
+
+  std::vector<std::vector<float>> w1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.weight", 0);
+  std::vector<std::vector<float>> b1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.bias", 0);
+  std::vector<std::vector<float>> w2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.weight", 0);
+  std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.bias", 0);
+  std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight", 0);
+  std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.bias", 0);
+
+  auto itemNNweight1Vector = maker.arrayVector<float>(w1, REAL());
+  auto itemNNweight2Vector = maker.arrayVector<float>(w2, REAL());
+  auto itemNNweight3Vector = maker.arrayVector<float>(w3, REAL());
+  auto itemNNBias1Vector = maker.arrayVector<float>(b1, REAL());
+  auto itemNNBias2Vector = maker.arrayVector<float>(b2, REAL());
+  auto itemNNBias3Vector = maker.arrayVector<float>(b3, REAL());
 
   exec::registerVectorFunction(
-        "softmax", Softmax::signatures(), std::make_unique<Softmax>());*/
+      "mat_mul_1",
+      MatrixMultiply::signatures(),
+      std::make_unique<MatrixMultiply>(
+          std::move(itemNNweight1Vector->elements()->values()->asMutable<float>()),
+          numCols,
+          32),
+          {},
+          true);
+
+  exec::registerVectorFunction(
+      "mat_vector_add_1",
+      MatrixVectorAddition::signatures(),
+      std::make_unique<MatrixVectorAddition>(
+          std::move(itemNNBias1Vector->elements()->values()->asMutable<float>()), 32),
+          {},
+          true);
+
+  exec::registerVectorFunction(
+      "mat_mul_2",
+      MatrixMultiply::signatures(),
+      std::make_unique<MatrixMultiply>(
+          std::move(itemNNweight2Vector->elements()->values()->asMutable<float>()),
+          32,
+          16),
+          {},
+          true);
+
+  exec::registerVectorFunction(
+      "mat_vector_add_2",
+      MatrixVectorAddition::signatures(),
+      std::make_unique<MatrixVectorAddition>(
+          std::move(itemNNBias2Vector->elements()->values()->asMutable<float>()), 16),
+          {},
+          true);
+
+  exec::registerVectorFunction(
+      "mat_mul_3",
+      MatrixMultiply::signatures(),
+      std::make_unique<MatrixMultiply>(
+          std::move(itemNNweight3Vector->elements()->values()->asMutable<float>()),
+          16,
+          2),
+          {},
+          true);
+
+  exec::registerVectorFunction(
+      "mat_vector_add_3",
+      MatrixVectorAddition::signatures(),
+      std::make_unique<MatrixVectorAddition>(
+          std::move(itemNNBias3Vector->elements()->values()->asMutable<float>()), 2),
+          {},
+          true);
+
+  exec::registerVectorFunction(
+      "relu", Relu::signatures(), std::make_unique<Relu>(),
+          {},
+          true);
+
+  exec::registerVectorFunction(
+      "softmax", Softmax::signatures(), std::make_unique<Softmax>(),
+          {},
+          true);
 
 }
 
@@ -1224,9 +1281,9 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      RowVectorPtr customerRowVector = getCustomerData("resources/data/customer.csv");
      std::cout << "customerRowVector data generated" << std::endl;
 
-     //std::cout << "printing w1" << std::endl;
-     std::vector<std::vector<float>> w1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.weight", 0);
-     //std::cout << "printing b1" << std::endl;
+     registerNNFunctions(9);
+
+     /*std::vector<std::vector<float>> w1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.weight", 0);
      std::vector<std::vector<float>> b1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.bias", 0);
      std::vector<std::vector<float>> w2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.weight", 0);
      std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.bias", 0);
@@ -1253,7 +1310,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                                   itemNNweight3Vector->elements()->values()->asMutable<float>(),
                                   itemNNBias3Vector->elements()->values()->asMutable<float>(),
                                   NNBuilder::SOFTMAX)
-                                  .build();
+                                  .build(); */
 
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
@@ -1292,7 +1349,8 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"transaction_id", "transaction_features", "customer_features"}
                          )
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
-                         .project({"transaction_id", "all_features", fmt::format(dnn_fraud_model, "all_features") + " AS fraudulent_probs"})
+                         //.project({"transaction_id", "all_features", fmt::format(dnn_fraud_model, "all_features") + " AS fraudulent_probs"})
+                         .project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          //.filter("get_binary_class(fraudulent_probs) = 1")
                          //.filter("xgboost_fraud_predict(all_features) >= 0.5")
                          //.project({"transaction_id"})
