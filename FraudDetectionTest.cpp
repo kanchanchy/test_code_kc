@@ -1305,7 +1305,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .values({orderRowVector})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
                          .filter("o_timestamp IS NOT NULL")
-                         //.filter("is_weekday(o_timestamp) = 1")
+                         .filter("is_weekday(o_timestamp) = 1")
                          .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          .hashJoin({"o_customer_sk"},
                              {"t_sender"},
@@ -1319,10 +1319,10 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              core::JoinType::kInner
                          )
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
-                         //.filter("time_diff <= 150")
+                         .filter("time_diff <= 300")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
-                         //.filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
-                         .hashJoin({"o_customer_sk"},
+                         .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
+                         /*.hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values({customerRowVector})
@@ -1336,7 +1336,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.project({"transaction_id", "all_features", fmt::format(dnn_fraud_model, "all_features") + " AS fraudulent_probs"})
                          //.project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
-                         .filter("get_binary_class(fraudulent_probs) = 1")
+                         .filter("get_binary_class(fraudulent_probs) = 1")*/
                          //.filter("xgboost_fraud_predict(all_features) >= 0.5")
                          //.project({"transaction_id"})
                          .planNode();
