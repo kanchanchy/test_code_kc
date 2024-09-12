@@ -237,7 +237,7 @@ class GetTransactionFeatures : public MLFunction {
         float totalOrder = static_cast<float>(totalOrders->valueAt(i));
         float tAmount = tAmounts->valueAt(i);
         float timeDiff = static_cast<float>(timeDiffs->valueAt(i));
-        int64_t tTimestamp = static_cast<float>tTimestamps->valueAt(i);
+        int64_t tTimestamp = static_cast<float>(tTimestamps->valueAt(i));
 
         // Calculate the number of days since Unix epoch
         int64_t daysSinceEpochInt = tTimestamp / secondsInADay;
