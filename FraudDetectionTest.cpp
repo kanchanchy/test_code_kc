@@ -1268,35 +1268,6 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      registerNNFunctions(9);
 
-     /*std::vector<std::vector<float>> w1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.weight", 0);
-     std::vector<std::vector<float>> b1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.bias", 0);
-     std::vector<std::vector<float>> w2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.weight", 0);
-     std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.bias", 0);
-     std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight", 0);
-     std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.bias", 0);
-
-     auto itemNNweight1Vector = maker.arrayVector<float>(w1, REAL());
-     auto itemNNweight2Vector = maker.arrayVector<float>(w2, REAL());
-     auto itemNNweight3Vector = maker.arrayVector<float>(w3, REAL());
-     auto itemNNBias1Vector = maker.arrayVector<float>(b1, REAL());
-     auto itemNNBias2Vector = maker.arrayVector<float>(b2, REAL());
-     auto itemNNBias3Vector = maker.arrayVector<float>(b3, REAL());
-
-     std::string dnn_fraud_model =  NNBuilder()
-                                  .denseLayer(32, 9,
-                                  itemNNweight1Vector->elements()->values()->asMutable<float>(),
-                                  itemNNBias1Vector->elements()->values()->asMutable<float>(),
-                                  NNBuilder::RELU)
-                                  .denseLayer(16, 32,
-                                  itemNNweight2Vector->elements()->values()->asMutable<float>(),
-                                  itemNNBias2Vector->elements()->values()->asMutable<float>(),
-                                  NNBuilder::RELU)
-                                  .denseLayer(2, 16,
-                                  itemNNweight3Vector->elements()->values()->asMutable<float>(),
-                                  itemNNBias3Vector->elements()->values()->asMutable<float>(),
-                                  NNBuilder::SOFTMAX)
-                                  .build(); */
-
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
@@ -1333,10 +1304,9 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"transaction_id", "transaction_features", "customer_features"}
                          )
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
-                         //.project({"transaction_id", "all_features", fmt::format(dnn_fraud_model, "all_features") + " AS fraudulent_probs"})
                          .project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          .filter("get_binary_class(fraudulent_probs) = 1")
-                         .filter("xgboost_fraud_predict(all_features) >= 0.25")
+                         .filter("xgboost_fraud_predict(all_features) >= 0.5")
                          .project({"transaction_id"})
                          .planNode();
    
