@@ -1300,7 +1300,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
 
      auto myPlan = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                         .values(orderRowVector)
+                         .values({orderRowVector})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
                          .filter("o_timestamp IS NOT NULL")
                          .filter("is_weekday(o_timestamp) = 1")
@@ -1311,7 +1311,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .hashJoin({"o_customer_sk"},
                              {"t_sender"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values(transactionRowVector)
+                             .values({transactionRowVector})
                              .localPartition({"t_sender"})
                              .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
                              .filter("t_timestamp IS NOT NULL")
@@ -1327,7 +1327,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values(customerRowVector)
+                             .values({customerRowVector})
                              .localPartition({"c_customer_sk"})
                              .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_country", "get_age(c_birth_year) as c_age"})
                              .project({"c_customer_sk", "get_customer_features(c_address_num, c_cust_flag, c_birth_country, c_age) as customer_features"})
@@ -1389,15 +1389,22 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
  
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     auto results = exec::test::AssertQueryBuilder(myPlan).copyResults(pool_.get());
-    //auto results = exec::test::AssertQueryBuilder(myPlanParallel).maxDrivers(4).copyResults(pool_.get());
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
-    std::cout << "Results Size: " << results->size() << std::endl;
+    std::cout << "Single Batch Results Size: " << results->size() << std::endl;
     std::cout << results->toString(0, 5) << std::endl;
-   
-    std::cout << "Time for Executing with Real Data (sec): " << std::endl;
+    std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
 
+    begin = std::chrono::steady_clock::now();
+    results = exec::test::AssertQueryBuilder(myPlanParallel).maxDrivers(4).copyResults(pool_.get());
+    end = std::chrono::steady_clock::now();
+
+    //std::cout << "Results:" << results->toString() << std::endl;
+    std::cout << "Multi Batch Results Size: " << results->size() << std::endl;
+    std::cout << results->toString(0, 5) << std::endl;
+    std::cout << "Time for Executing with Multi Batch (sec): " << std::endl;
     std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
  
 }
