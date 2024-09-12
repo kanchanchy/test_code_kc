@@ -914,7 +914,7 @@ std::vector<std::vector<float>> FraudDetectionTest::loadHDF5Array(const std::str
       throw std::runtime_error("Unsupported rank: " + std::to_string(rank));
     }
 
-    //std::cout << "Num Rows: " << rows << ", Num Columns " << cols << std::endl;
+    std::cout << "Num Rows: " << rows << ", Num Columns " << cols << std::endl;
 
     // Read data into a 1D vector
     std::vector<float> flatData(rows * cols);
@@ -1229,8 +1229,8 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      std::vector<std::vector<float>> b1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.bias", 0);
      std::vector<std::vector<float>> w2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.weight", 0);
      std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.bias", 0);
-     std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight", 0);
-     std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.bias", 0);
+     std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight", 1);
+     std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.bias", 1);
 
      auto itemNNweight1Vector = maker.arrayVector<float>(w1, REAL());
      auto itemNNweight2Vector = maker.arrayVector<float>(w2, REAL());
