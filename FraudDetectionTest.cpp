@@ -1308,7 +1308,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.localPartition({"o_customer_sk"})
                          //.finalAggregation()
                          .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
-                         .orderBy({fmt::format("{} DSC NULLS FIRST", "o_customer_sk")}, false)
+                         .orderBy({fmt::format("{} DESC NULLS FIRST", "o_customer_sk")}, false)
                          /*.hashJoin({"o_customer_sk"},
                              {"t_sender"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
@@ -1353,7 +1353,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .partialAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          .localPartition({"o_customer_sk"})
                          .finalAggregation()
-                         .orderBy({fmt::format("{} DSC NULLS FIRST", "o_customer_sk")}, false)
+                         .orderBy({fmt::format("{} DESC NULLS FIRST", "o_customer_sk")}, false)
                          //.singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          /*.hashJoin({"o_customer_sk"},
                              {"t_sender"},
