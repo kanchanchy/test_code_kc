@@ -236,7 +236,7 @@ class GetTransactionFeatures : public MLFunction {
         float totalOrder = (static_cast<float>(totalOrders->valueAt(i)))/85.0;
         float tAmount = (tAmounts->valueAt(i))/20000.0;
         float timeDiff = (static_cast<float>(timeDiffs->valueAt(i)))/750.0;
-        int64_t tTimestamp = static_cast<float>(tTimestamps->valueAt(i));
+        int64_t tTimestamp = tTimestamps->valueAt(i);
 
         // Calculate day of week
         std::time_t time = static_cast<std::time_t>(tTimestamp);
@@ -1335,7 +1335,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
                          //.project({"transaction_id", "all_features", fmt::format(dnn_fraud_model, "all_features") + " AS fraudulent_probs"})
                          //.project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
-                         //.project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
+                         .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          //.filter("get_binary_class(fraudulent_probs) = 1")
                          //.filter("xgboost_fraud_predict(all_features) >= 0.5")
                          //.project({"transaction_id"})
