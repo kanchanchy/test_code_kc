@@ -234,9 +234,9 @@ class GetTransactionFeatures : public MLFunction {
     auto tTimestamps = decodedArray3->base()->as<FlatVector<int64_t>>();
 
     for (int i = 0; i < rows.size(); i++) {
-        float totalOrder = static_cast<float>(totalOrders->valueAt(i));
-        float tAmount = tAmounts->valueAt(i);
-        float timeDiff = static_cast<float>(timeDiffs->valueAt(i));
+        float totalOrder = (static_cast<float>(totalOrders->valueAt(i)))/62.0;
+        float tAmount = (tAmounts->valueAt(i))/12849.0;
+        float timeDiff = (static_cast<float>(timeDiffs->valueAt(i)))/706.0;
         int64_t tTimestamp = static_cast<float>(tTimestamps->valueAt(i));
 
         // Calculate the number of days since Unix epoch
@@ -244,8 +244,8 @@ class GetTransactionFeatures : public MLFunction {
         // Unix epoch (Jan 1, 1970) was a Thursday, so dayOfWeek for epoch is 4 (0=Sunday, 6=Saturday)
         int dayOfWeekEpoch = 4;  // Thursday
         // Calculate the current day of the week (0=Sunday, ..., 6=Saturday)
-        float dayOfWeek = static_cast<float>((daysSinceEpochInt + dayOfWeekEpoch) % 7);
-        float daysSinceEpoch = static_cast<float>(daysSinceEpochInt);
+        float dayOfWeek = (static_cast<float>((daysSinceEpochInt + dayOfWeekEpoch) % 7))/6.0;
+        float daysSinceEpoch = (static_cast<float>(daysSinceEpochInt))/15217.0;
 
         std::vector<float> vec;
         vec.push_back(totalOrder);
@@ -325,10 +325,10 @@ class GetCustomerFeatures : public MLFunction {
     auto cAges = decodedArray3->base()->as<FlatVector<int>>();
 
     for (int i = 0; i < rows.size(); i++) {
-        float cAddressNum = static_cast<float>(cAddressNums->valueAt(i));
+        float cAddressNum = (static_cast<float>(cAddressNums->valueAt(i)))/26803.0;
         float cCustFlag = static_cast<float>(cCustFlags->valueAt(i));
-        float cBirthCountry = static_cast<float>(cBirthCountries->valueAt(i));
-        float cAge = static_cast<float>(cAges->valueAt(i));
+        float cBirthCountry = (static_cast<float>(cBirthCountries->valueAt(i)))/206.0;
+        float cAge = (static_cast<float>(cAges->valueAt(i)))/93.0;
 
         std::vector<float> vec;
         vec.push_back(cAddressNum);
