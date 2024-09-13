@@ -1293,9 +1293,9 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
          batchesCustomer.push_back(std::dynamic_pointer_cast<RowVector>(customerRowVector->slice(start, end - start)));
      }
 
-     std::cout << "Order batch count: " << batchesOrder->size() << std::endl;
-     std::cout << "Transaction batch count: " << batchesTransaction->size() << std::endl;
-     std::cout << "Customer batch count: " << batchesCustomer->size() << std::endl;
+     std::cout << "Order batch count: " << batchesOrder.size() << std::endl;
+     std::cout << "Transaction batch count: " << batchesTransaction.size() << std::endl;
+     std::cout << "Customer batch count: " << batchesCustomer.size() << std::endl;
 
      registerNNFunctions(9);
 
