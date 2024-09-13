@@ -1270,7 +1270,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      int totalRowsTransaction = transactionRowVector->size();
      int totalRowsCustomer = customerRowVector->size();
 
-     int batch_counts = 1;
+     int batch_counts = 4;
      int batchSizeOrder = totalRowsOrder / batch_counts;
      int batchSizeTransaction = totalRowsTransaction / batch_counts;
      int batchSizeCustomer = totalRowsCustomer / batch_counts;
@@ -1292,6 +1292,10 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
          end = (i == (batch_counts - 1)) ? totalRowsCustomer : (i + 1) * batchSizeCustomer;  // Handle remainder for last batch
          batchesCustomer.push_back(std::dynamic_pointer_cast<RowVector>(customerRowVector->slice(start, end - start)));
      }
+
+     std::cout << "Order batch count: " << batchesOrder->size() << std::endl;
+     std::cout << "Transaction batch count: " << batchesTransaction->size() << std::endl;
+     std::cout << "Customer batch count: " << batchesCustomer->size() << std::endl;
 
      registerNNFunctions(9);
 
@@ -1447,8 +1451,8 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          )
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
                          //.filter("transaction_id = 99210640002 or transaction_id = 7")
-                         .project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
-                         .filter("get_binary_class(fraudulent_probs) = 1")
+                         //.project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
+                         //.filter("get_binary_class(fraudulent_probs) = 1")
                          .filter("xgboost_fraud_predict(all_features) >= 0.5")
                          .project({"transaction_id", "all_features"})
                          .planNode();
