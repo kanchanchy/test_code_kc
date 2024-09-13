@@ -1293,9 +1293,9 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
          batchesCustomer.push_back(std::dynamic_pointer_cast<RowVector>(customerRowVector->slice(start, end - start)));
      }
 
-     std::cout << "Order batch count: " << batchesOrder.size() << std::endl;
-     std::cout << "Transaction batch count: " << batchesTransaction.size() << std::endl;
-     std::cout << "Customer batch count: " << batchesCustomer.size() << std::endl;
+     //std::cout << "Order batch count: " << batchesOrder.size() << std::endl;
+     //std::cout << "Transaction batch count: " << batchesTransaction.size() << std::endl;
+     //std::cout << "Customer batch count: " << batchesCustomer.size() << std::endl;
 
      registerNNFunctions(9);
 
@@ -1453,7 +1453,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.filter("transaction_id = 99210640002 or transaction_id = 7")
                          //.project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          //.filter("get_binary_class(fraudulent_probs) = 1")
-                         .filter("xgboost_fraud_predict(all_features) >= 0.5")
+                         //.filter("xgboost_fraud_predict(all_features) >= 0.5")
                          .project({"transaction_id", "all_features"})
                          .planNode();
 
