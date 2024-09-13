@@ -1270,7 +1270,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      int totalRowsTransaction = transactionRowVector->size();
      int totalRowsCustomer = customerRowVector->size();
 
-     int batch_counts = 2;
+     int batch_counts = 3;
      int batchSizeOrder = totalRowsOrder / batch_counts;
      int batchSizeTransaction = totalRowsTransaction / batch_counts;
      int batchSizeCustomer = totalRowsCustomer / batch_counts;
