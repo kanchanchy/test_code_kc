@@ -1316,7 +1316,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"t_sender"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values({transactionRowVector})
-                             .localPartition({"t_sender"})
+                             //.localPartition({"t_sender"})
                              .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
                              .filter("t_timestamp IS NOT NULL")
                              .planNode(),
@@ -1427,7 +1427,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"t_sender"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values(batchesTransaction)
-                             .localPartition({"t_sender"})
+                             //.localPartition({"t_sender"})
                              .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
                              .filter("t_timestamp IS NOT NULL")
                              .planNode(),
