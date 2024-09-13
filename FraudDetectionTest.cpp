@@ -1399,9 +1399,9 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .planNode();
 
 
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    auto results = exec::test::AssertQueryBuilder(myPlan2).copyResults(pool_.get());
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    begin = std::chrono::steady_clock::now();
+    results = exec::test::AssertQueryBuilder(myPlan2).copyResults(pool_.get());
+    end = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
     std::cout << "Single Batch with XGBoost first Results Size: " << results->size() << std::endl;
