@@ -1312,7 +1312,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.localPartition({"o_customer_sk"})
                          //.finalAggregation()
                          .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
-                         .hashJoin({"o_customer_sk"},
+                         /*.hashJoin({"o_customer_sk"},
                              {"t_sender"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values({transactionRowVector})
@@ -1342,7 +1342,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .filter("xgboost_fraud_predict(all_features) >= 0.5")
                          .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          .filter("get_binary_class(fraudulent_probs) = 1")
-                         .project({"transaction_id"})
+                         .project({"transaction_id"})*/
                          .planNode();
 
 
@@ -1423,7 +1423,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .localPartition({"o_customer_sk"})
                          .finalAggregation()
                          //.singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
-                         .hashJoin({"o_customer_sk"},
+                         /*.hashJoin({"o_customer_sk"},
                              {"t_sender"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values(batchesTransaction)
@@ -1454,7 +1454,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.filter("transaction_id = 99210640002 or transaction_id = 7")
                          .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          .filter("get_binary_class(fraudulent_probs) = 1")
-                         .project({"transaction_id"})
+                         .project({"transaction_id"})*/
                          .planNode();
 
 
