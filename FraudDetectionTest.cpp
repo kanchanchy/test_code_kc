@@ -1335,11 +1335,11 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"transaction_id", "transaction_features", "customer_features"}
                          )
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
-                         .project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
-                         .filter("get_binary_class(fraudulent_probs) = 1")
-                         .filter("xgboost_fraud_predict(all_features) >= 0.5")
-                         .project({"transaction_id"})
-                         //.orderBy({fmt::format("{} ASC NULLS FIRST", "transaction_id")}, false)
+                         .filter("transaction_id = 99210640002 or transaction_id = 7")
+                         //.project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
+                         //.filter("get_binary_class(fraudulent_probs) = 1")
+                         //.filter("xgboost_fraud_predict(all_features) >= 0.5")
+                         //.project({"transaction_id"})
                          .planNode();
 
 
@@ -1355,7 +1355,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
 
-    auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+    /*auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
                          .filter("o_timestamp IS NOT NULL")
@@ -1407,7 +1407,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
     std::cout << "Single Batch with XGBoost first Results Size: " << results->size() << std::endl;
     std::cout << results->toString(0, 10) << std::endl;
     std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl; */
 
 
      auto myPlanParallel1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
@@ -1447,11 +1447,11 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"transaction_id", "transaction_features", "customer_features"}
                          )
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
-                         .project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
-                         .filter("get_binary_class(fraudulent_probs) = 1")
-                         .filter("xgboost_fraud_predict(all_features) >= 0.5")
-                         .project({"transaction_id"})
-                         //.orderBy({fmt::format("{} ASC NULLS FIRST", "transaction_id")}, false)
+                         .filter("transaction_id = 99210640002 or transaction_id = 7")
+                         //.project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
+                         //.filter("get_binary_class(fraudulent_probs) = 1")
+                         //.filter("xgboost_fraud_predict(all_features) >= 0.5")
+                         //.project({"transaction_id"})
                          .planNode();
 
 
@@ -1467,7 +1467,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
 
-    auto myPlanParallel2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+    /*auto myPlanParallel2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values(batchesOrder)
                          //.localPartition({"o_customer_sk"})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
@@ -1520,7 +1520,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
     std::cout << "Multi Batch with XGBoost first Results Size: " << results->size() << std::endl;
     std::cout << results->toString(0, 10) << std::endl;
     std::cout << "Time for Executing with Multi Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl; */
 
  
 }
