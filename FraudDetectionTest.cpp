@@ -1377,7 +1377,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              .project({"o_customer_sk", "total_order", "o_last_order_time"})
                              .planNode(),
                              "",
-                             {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"}
+                             {"transaction_id", "t_amount", "t_timestamp", "o_customer_sk", "total_order", "o_last_order_time"}
                          )
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
                          .filter("time_diff <= 500")
@@ -1491,7 +1491,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              .project({"o_customer_sk", "total_order", "o_last_order_time"})
                              .planNode(),
                              "",
-                             {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"}
+                             {"transaction_id", "t_amount", "t_timestamp", "o_customer_sk", "total_order", "o_last_order_time"}
                          )
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
                          .filter("time_diff <= 500")
