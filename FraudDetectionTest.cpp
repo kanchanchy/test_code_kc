@@ -1532,12 +1532,12 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
     struct std::tm t = {};
-    std::istringstream ss("2012-09-05T07:21");
+    std::istringstream ss("2013-12-01T00:00");
     ss >> std::get_time(&t, "%Y-%m-%dT%H:%M");
 
       // Check if parsing was successful
       if (ss.fail()) {
-          std::cerr << "Failed to parse date string " << "2013-12-01T01:00" << std::endl;
+          std::cerr << "Failed to parse date string " << "2013-12-01T00:00" << std::endl;
           std::cout << "Date parsing failed" << std::endl;
       }
 
