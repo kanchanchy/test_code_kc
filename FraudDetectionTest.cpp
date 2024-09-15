@@ -1537,7 +1537,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
       // Check if parsing was successful
       if (ss.fail()) {
-          std::cerr << "Failed to parse date string " << inputStr << std::endl;
+          std::cerr << "Failed to parse date string " << "2012-09-05T07:21" << std::endl;
           std::cout << "Date parsing failed" << std::endl;
       }
 
