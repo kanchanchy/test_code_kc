@@ -1538,7 +1538,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
       // Check if parsing was successful
       if (ss.fail()) {
           std::cerr << "Failed to parse date string " << inputStr << std::endl;
-          std::cout << "Date parsing failed" std::endl;
+          std::cout << "Date parsing failed" << std::endl;
       }
 
       // Convert tm struct to time_t (timestamp)
