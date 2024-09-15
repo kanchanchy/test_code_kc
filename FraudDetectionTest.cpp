@@ -1532,20 +1532,31 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
     struct std::tm t = {};
-    std::istringstream ss("2013-12-01T00:00");
+    std::istringstream ss("2012-01-01T00:00");
     ss >> std::get_time(&t, "%Y-%m-%dT%H:%M");
-
-      // Check if parsing was successful
-      if (ss.fail()) {
-          std::cerr << "Failed to parse date string " << "2013-12-01T00:00" << std::endl;
-          std::cout << "Date parsing failed" << std::endl;
-      }
 
       // Convert tm struct to time_t (timestamp)
       time_t tt = mktime(&t);
-      // Cast time_t to int64_t
       int64_t timestamp = static_cast<int64_t>(tt);
-      std::cout << "returned time: " << timestamp << std::endl;
+      std::cout << "returned time1: " << timestamp << std::endl;
+
+
+      std::istringstream ss("2013-02-15T00:00");
+    ss >> std::get_time(&t, "%Y-%m-%dT%H:%M");
+
+      // Convert tm struct to time_t (timestamp)
+      tt = mktime(&t);
+      timestamp = static_cast<int64_t>(tt);
+      std::cout << "returned time2: " << timestamp << std::endl;
+
+
+      std::istringstream ss("2013-12-31T11:59");
+    ss >> std::get_time(&t, "%Y-%m-%dT%H:%M");
+
+      // Convert tm struct to time_t (timestamp)
+      tt = mktime(&t);
+      timestamp = static_cast<int64_t>(tt);
+      std::cout << "returned time3: " << timestamp << std::endl;
 
  
 }
