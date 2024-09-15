@@ -1533,13 +1533,12 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
     struct std::tm t = {};
     std::istringstream ss("2012-09-05T07:21");
-      ss >> std::get_time(&t, dateFormat);
+    ss >> std::get_time(&t, dateFormat);
 
       // Check if parsing was successful
       if (ss.fail()) {
           std::cerr << "Failed to parse date string " << inputStr << std::endl;
-          results.push_back(0);
-          continue;
+          std::cout << "Date parsing failed" std::endl;
       }
 
       // Convert tm struct to time_t (timestamp)
