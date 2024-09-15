@@ -1533,6 +1533,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
     struct std::tm t = {};
     for (int i = 0; i < 3; i++) {
+    std:: string dateStr;
     if (i == 0) {
         dateStr = "2012-01-01T00:00";
     }
