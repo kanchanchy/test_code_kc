@@ -1532,31 +1532,24 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
     struct std::tm t = {};
-    std::istringstream ss("2012-01-01T00:00");
+    for (int i = 0; i < 3; i++) {
+    if (i == 0) {
+        dateStr = "2012-01-01T00:00";
+    }
+    else if (i == 1) {
+        dateStr = "2013-02-15T00:00";
+    }
+    else {
+        dateStr = "2013-12-31T11:59";
+    }
+        std::istringstream ss(dateStr);
     ss >> std::get_time(&t, "%Y-%m-%dT%H:%M");
 
       // Convert tm struct to time_t (timestamp)
       time_t tt = mktime(&t);
       int64_t timestamp = static_cast<int64_t>(tt);
-      std::cout << "returned time1: " << timestamp << std::endl;
-
-
-      std::istringstream ss("2013-02-15T00:00");
-    ss >> std::get_time(&t, "%Y-%m-%dT%H:%M");
-
-      // Convert tm struct to time_t (timestamp)
-      tt = mktime(&t);
-      timestamp = static_cast<int64_t>(tt);
-      std::cout << "returned time2: " << timestamp << std::endl;
-
-
-      std::istringstream ss("2013-12-31T11:59");
-    ss >> std::get_time(&t, "%Y-%m-%dT%H:%M");
-
-      // Convert tm struct to time_t (timestamp)
-      tt = mktime(&t);
-      timestamp = static_cast<int64_t>(tt);
-      std::cout << "returned time3: " << timestamp << std::endl;
+      std::cout << "returned time " << i << ": " << timestamp << std::endl;
+    }
 
  
 }
