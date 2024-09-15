@@ -1530,6 +1530,24 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
     std::cout << "Time for Executing with Multi Batch (sec): " << std::endl;
     std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
 
+
+    struct std::tm t = {};
+    std::istringstream ss("2012-09-05T07:21");
+      ss >> std::get_time(&t, dateFormat);
+
+      // Check if parsing was successful
+      if (ss.fail()) {
+          std::cerr << "Failed to parse date string " << inputStr << std::endl;
+          results.push_back(0);
+          continue;
+      }
+
+      // Convert tm struct to time_t (timestamp)
+      time_t tt = mktime(&t);
+      // Cast time_t to int64_t
+      int64_t timestamp = static_cast<int64_t>(tt);
+      std::cout << "returned time: " << timestamp << std::endl;
+
  
 }
 
