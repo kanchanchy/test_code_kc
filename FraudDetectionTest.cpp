@@ -1404,15 +1404,15 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .planNode();
 
 
-    begin = std::chrono::steady_clock::now();
-    results = exec::test::AssertQueryBuilder(myPlanParallel1).maxDrivers(4).copyResults(pool_.get());
-    end = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point begin1 = std::chrono::steady_clock::now();
+    auto results1 = exec::test::AssertQueryBuilder(myPlanParallel1).maxDrivers(4).copyResults(pool_.get());
+    std::chrono::steady_clock::time_point end1 = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
-    std::cout << "Multi Batch with DNN first Results Size: " << results->size() << std::endl;
-    std::cout << results->toString(0, 5) << std::endl;
+    std::cout << "Multi Batch with DNN first Results Size: " << results1->size() << std::endl;
+    std::cout << results1->toString(0, 5) << std::endl;
     std::cout << "Time for Executing with Multi Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end1 - begin1).count()) /1000000.0 << std::endl;
 
 
  
