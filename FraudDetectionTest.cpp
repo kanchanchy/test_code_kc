@@ -726,6 +726,8 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
   std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.bias", 0);
   std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight", 0);
   std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.bias", 0);
+  //std::vector<std::vector<float>> w11 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "w11", 0);
+  //std::vector<std::vector<float>> w12 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "w12", 0);
 
   auto itemNNweight1Vector = maker.arrayVector<float>(w1, REAL());
   auto itemNNweight2Vector = maker.arrayVector<float>(w2, REAL());
@@ -733,6 +735,8 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
   auto itemNNBias1Vector = maker.arrayVector<float>(b1, REAL());
   auto itemNNBias2Vector = maker.arrayVector<float>(b2, REAL());
   auto itemNNBias3Vector = maker.arrayVector<float>(b3, REAL());
+  //auto itemNNweight11Vector = maker.arrayVector<float>(w11, REAL());
+  //auto itemNNweight12Vector = maker.arrayVector<float>(w12, REAL());
 
   exec::registerVectorFunction(
       "mat_mul_1",
@@ -783,6 +787,28 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
 
   exec::registerVectorFunction(
       "softmax", Softmax::signatures(), std::make_unique<Softmax>());
+
+  /*exec::registerVectorFunction(
+      "mat_mul_11",
+      MatrixMultiply::signatures(),
+      std::make_unique<MatrixMultiply>(
+          std::move(itemNNweight11Vector->elements()->values()->asMutable<float>()),
+          4,
+          32));
+
+  exec::registerVectorFunction(
+      "mat_mul_12",
+      MatrixMultiply::signatures(),
+      std::make_unique<MatrixMultiply>(
+          std::move(itemNNweight12Vector->elements()->values()->asMutable<float>()),
+          5,
+          32));
+
+  exec::registerVectorFunction(
+      "mat_vector_add_11",
+      MatrixVectorAddition::signatures(),
+      std::make_unique<MatrixVectorAddition>(
+          std::move(itemNNBias1Vector->elements()->values()->asMutable<float>()), 32));*/
 
 }
 
@@ -1272,7 +1298,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      std::cout << "order data size: " << totalRowsOrder << ",  transaction data size: " << totalRowsTransaction << ",  customer data size: " << totalRowsCustomer << std::endl;
 
-     int batch_counts = 24;
+     int batch_counts = 8;
      int batchSizeOrder = totalRowsOrder / batch_counts;
      int batchSizeTransaction = totalRowsTransaction / batch_counts;
      int batchSizeCustomer = totalRowsCustomer / batch_counts;
