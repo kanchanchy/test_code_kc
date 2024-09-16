@@ -61,6 +61,7 @@
 #include "velox/functions/Udf.h"
 #include <unordered_map>
 #include <H5Cpp.h>
+#include <Eigen/Dense>
 
 using namespace std;
 using namespace ml;
@@ -69,6 +70,77 @@ using namespace facebook::velox::test;
 using namespace facebook::velox::exec;
 using namespace facebook::velox::exec::test;
 using namespace facebook::velox::core;
+
+
+
+
+class VectorAddition : public MLFunction {
+ public:
+  VectorAddition(int inputDims) {
+    inputDims_ = inputDims;
+  }
+
+  void apply(
+      const SelectivityVector& rows,
+      std::vector<VectorPtr>& args,
+      const TypePtr& type,
+      exec::EvalCtx& context,
+      VectorPtr& output) const override {
+    BaseVector::ensureWritable(rows, type, context.pool(), output);
+
+    auto input1Features = args[0]->as<ArrayVector>()->elements();
+    float* input1Values = input1Features->values()->asMutable<float>();
+
+    auto input2Features = args[1]->as<ArrayVector>()->elements();
+    float* input2Values = input2Features->values()->asMutable<float>();
+
+    int numInput = rows.size();
+
+    Eigen::Map<
+        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+        input1Matrix(input1Values, numInput, inputDims_);
+    Eigen::Map<
+        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+        input2Matrix(input2Values, numInput, inputDims_);
+
+    std::vector<std::vector<float>> results;
+
+    // TODO more efficient way?
+    for (int i = 0; i < numInput; i++) {
+      auto vSum = input1Matrix.row(i) + input2Matrix.row(i)
+      std::vector<float> std_vector(v3.data(), v3.data() + v3.size());
+      results.push_back(std_vector);
+    }
+
+    VectorMaker maker{context.pool()};
+    output = maker.arrayVector<float>(results, REAL());
+  }
+
+  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
+    return {exec::FunctionSignatureBuilder()
+                .argumentType("array(REAL)")
+                .argumentType("array(REAL)")
+                .returnType("array(REAL)")
+                .build()};
+  }
+
+  static std::string getName() {
+    return "vector_addition";
+  };
+
+  float* getTensor() const override {
+    // TODO: need to implement
+    return nullptr;
+  }
+
+  CostEstimate getCost(std::vector<int> inputDims) {
+    // TODO: need to implement
+    return CostEstimate(0, inputDims[0], inputDims[1]);
+  }
+
+ private:
+  int inputDims_;
+};
 
 
 
@@ -788,7 +860,7 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
   exec::registerVectorFunction(
       "softmax", Softmax::signatures(), std::make_unique<Softmax>());
 
-  /*exec::registerVectorFunction(
+  exec::registerVectorFunction(
       "mat_mul_11",
       MatrixMultiply::signatures(),
       std::make_unique<MatrixMultiply>(
@@ -808,7 +880,14 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
       "mat_vector_add_11",
       MatrixVectorAddition::signatures(),
       std::make_unique<MatrixVectorAddition>(
-          std::move(itemNNBias1Vector->elements()->values()->asMutable<float>()), 32));*/
+          std::move(itemNNBias1Vector->elements()->values()->asMutable<float>()), 32));
+
+  exec::registerVectorFunction(
+          "vector_addition",
+          VectorAddition::signatures(),
+          std::make_unique<VectorAddition>(32));
+  std::cout << "Completed registering function for vector_addition" << std::endl;
+
 
 }
 
@@ -1285,11 +1364,11 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                       
      std::string path = dataFile->path;
 
-     RowVectorPtr orderRowVector = getOrderData("resources/data/5_gb/order.csv");
+     RowVectorPtr orderRowVector = getOrderData("resources/data/1_gb/order.csv");
      std::cout << "orderRowVector data generated" << std::endl;
-     RowVectorPtr transactionRowVector = getTransactionData("resources/data/5_gb/financial_transactions.csv");
+     RowVectorPtr transactionRowVector = getTransactionData("resources/data/1_gb/financial_transactions.csv");
      std::cout << "transactionRowVector data generated" << std::endl;
-     RowVectorPtr customerRowVector = getCustomerData("resources/data/5_gb/customer.csv");
+     RowVectorPtr customerRowVector = getCustomerData("resources/data/1_gb/customer.csv");
      std::cout << "customerRowVector data generated" << std::endl;
 
      int totalRowsOrder = orderRowVector->size();
@@ -1327,7 +1406,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
 
-     /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+     auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
                          .localPartition({"o_customer_sk"})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
@@ -1366,7 +1445,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
                          .project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          .filter("get_binary_class(fraudulent_probs) = 1")
-                         .filter("xgboost_fraud_predict(all_features) >= 0.5")
+                         //.filter("xgboost_fraud_predict(all_features) >= 0.5")
                          .project({"transaction_id"})
                          .orderBy({fmt::format("{} ASC NULLS FIRST", "transaction_id")}, false)
                          .planNode();
@@ -1380,11 +1459,69 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
     std::cout << "Single Batch with DNN first Results Size: " << results->size() << std::endl;
     std::cout << results->toString(0, 5) << std::endl;
     std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl; */
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
 
 
 
-     auto myPlanParallel1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+    /*auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({orderRowVector})
+                         .localPartition({"o_customer_sk"})
+                         .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
+                         .filter("o_timestamp IS NOT NULL")
+                         .filter("is_weekday(o_timestamp) = 1")
+                         //.partialAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
+                         //.localPartition({"o_customer_sk"})
+                         //.finalAggregation()
+                         .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
+                         .hashJoin({"o_customer_sk"},
+                             {"t_sender"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values({transactionRowVector})
+                             .localPartition({"t_sender"})
+                             .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
+                             .filter("t_timestamp IS NOT NULL")
+                             .planNode(),
+                             "",
+                             {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"}
+                         )
+                         .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
+                         .filter("time_diff <= 500")
+                         .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
+                         .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
+                         .project({"o_customer_sk", "transaction_id", "mat_mul_12(transaction_features) as dnn_part12"})
+                         .hashJoin({"o_customer_sk"},
+                             {"c_customer_sk"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values({customerRowVector})
+                             .localPartition({"c_customer_sk"})
+                             .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_country", "get_age(c_birth_year) as c_age"})
+                             .project({"c_customer_sk", "mat_mul_11(get_customer_features(c_address_num, c_cust_flag, c_birth_country, c_age)) as dnn_part11"})
+                             .planNode(),
+                             "",
+                             {"transaction_id", "dnn_part11", "dnn_part12"}
+                         )
+                         .project({"transaction_id", "vector_addition(dnn_part11, dnn_part12) AS all_features"})
+                         .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(all_features)))))))) AS fraudulent_probs"})
+                         .filter("get_binary_class(fraudulent_probs) = 1")
+                         //.filter("xgboost_fraud_predict(all_features) >= 0.5")
+                         .project({"transaction_id"})
+                         .orderBy({fmt::format("{} ASC NULLS FIRST", "transaction_id")}, false)
+                         .planNode();
+
+
+    std::chrono::steady_clock::time_point begin11 = std::chrono::steady_clock::now();
+    auto results11 = exec::test::AssertQueryBuilder(myPlan2).copyResults(pool_.get());
+    std::chrono::steady_clock::time_point end11 = std::chrono::steady_clock::now();
+
+    //std::cout << "Results:" << results->toString() << std::endl;
+    std::cout << "Single Batch with Decomposition: " << results11->size() << std::endl;
+    std::cout << results11->toString(0, 5) << std::endl;
+    std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end11 - begin11).count()) /1000000.0 << std::endl; */
+
+
+
+     /*auto myPlanParallel1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values(batchesOrder)
                          //.localPartition({"o_customer_sk"})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
@@ -1438,7 +1575,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
     std::cout << "Multi Batch with DNN first Results Size: " << results1->size() << std::endl;
     std::cout << results1->toString(0, 5) << std::endl;
     std::cout << "Time for Executing with Multi Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end1 - begin1).count()) /1000000.0 << std::endl;
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end1 - begin1).count()) /1000000.0 << std::endl;*/
 
 
  
