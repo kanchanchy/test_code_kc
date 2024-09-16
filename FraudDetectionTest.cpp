@@ -1416,7 +1416,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
 
-     /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+     auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
                          .localPartition({"o_customer_sk"})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
@@ -1469,11 +1469,11 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
     std::cout << "Single Batch with DNN first Results Size: " << results->size() << std::endl;
     std::cout << results->toString(0, 5) << std::endl;
     std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;*/
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
 
 
 
-    auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+    /*auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
                          .localPartition({"o_customer_sk"})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
@@ -1527,7 +1527,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
     std::cout << "Single Batch with Decomposition: " << results11->size() << std::endl;
     std::cout << results11->toString(0, 5) << std::endl;
     std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end11 - begin11).count()) /1000000.0 << std::endl;
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end11 - begin11).count()) /1000000.0 << std::endl;*/
 
 
 
