@@ -176,7 +176,7 @@ def date_to_timestamp(date_str):
     # Parse the date string to a datetime object
     dt = datetime.datetime.strptime(date_str, '%Y-%m-%d')
     # Return the timestamp in milliseconds
-    return int(dt.timestamp()) - 25200
+    return int(dt.timestamp())
 
 # Register the UDF (specifying the return type as LongType)
 #date_to_timestamp_udf = udf(date_to_timestamp, LongType())

@@ -1259,11 +1259,11 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                       
      std::string path = dataFile->path;
 
-     RowVectorPtr orderRowVector = getOrderData(orderFilePath);
+     RowVectorPtr orderRowVector = getOrderData("resources/data/500_mb/order.csv");
      std::cout << "orderRowVector data generated" << std::endl;
-     RowVectorPtr transactionRowVector = getTransactionData("resources/data/financial_transactions.csv");
+     RowVectorPtr transactionRowVector = getTransactionData("resources/data/500_mb/financial_transactions.csv");
      std::cout << "transactionRowVector data generated" << std::endl;
-     RowVectorPtr customerRowVector = getCustomerData("resources/data/customer.csv");
+     RowVectorPtr customerRowVector = getCustomerData("resources/data/500_mb/customer.csv");
      std::cout << "customerRowVector data generated" << std::endl;
 
      int totalRowsOrder = orderRowVector->size();
@@ -1295,10 +1295,6 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
          batchesCustomer.push_back(std::dynamic_pointer_cast<RowVector>(customerRowVector->slice(start, end - start)));
      }
 
-     //std::cout << "Order batch count: " << batchesOrder.size() << std::endl;
-     //std::cout << "Transaction batch count: " << batchesTransaction.size() << std::endl;
-     //std::cout << "Customer batch count: " << batchesCustomer.size() << std::endl;
-
      registerNNFunctions(9);
 
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
@@ -1329,7 +1325,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
                          .filter("time_diff <= 500")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
-                         /*.filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
+                         .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
                          .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
@@ -1346,7 +1342,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .filter("get_binary_class(fraudulent_probs) = 1")
                          .filter("xgboost_fraud_predict(all_features) >= 0.5")
                          .project({"transaction_id"})
-                         .orderBy({fmt::format("{} ASC NULLS FIRST", "transaction_id")}, false)*/
+                         .orderBy({fmt::format("{} ASC NULLS FIRST", "transaction_id")}, false)
                          .planNode();
 
 
@@ -1360,60 +1356,6 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
     std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
     std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
 
-
-
-    auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                         .values({transactionRowVector})
-                         .localPartition({"t_sender"})
-                         .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
-                         .filter("t_timestamp IS NOT NULL")
-                         /*.hashJoin({"t_sender"},
-                             {"o_customer_sk"},
-                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values({orderRowVector})
-                             .localPartition({"o_customer_sk"})
-                             .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
-                             .filter("o_timestamp IS NOT NULL")
-                             .filter("is_weekday(o_timestamp) = 1")
-                             .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
-                             .project({"o_customer_sk", "total_order", "o_last_order_time"})
-                             .planNode(),
-                             "",
-                             {"transaction_id", "t_amount", "t_timestamp", "o_customer_sk", "total_order", "o_last_order_time"}
-                         )
-                         .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
-                         .filter("time_diff <= 500")
-                         .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
-                         .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
-                         .hashJoin({"o_customer_sk"},
-                             {"c_customer_sk"},
-                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values({customerRowVector})
-                             .localPartition({"c_customer_sk"})
-                             .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_country", "get_age(c_birth_year) as c_age"})
-                             .project({"c_customer_sk", "get_customer_features(c_address_num, c_cust_flag, c_birth_country, c_age) as customer_features"})
-                             .planNode(),
-                             "",
-                             {"transaction_id", "transaction_features", "customer_features"}
-                         )
-                         .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})*/
-                         /*.project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
-                         .filter("get_binary_class(fraudulent_probs) = 1")
-                         .filter("xgboost_fraud_predict(all_features) >= 0.5")*/
-                         .project({"transaction_id"})
-                         .orderBy({fmt::format("{} ASC NULLS FIRST", "transaction_id")}, false)
-                         .planNode();
-
-
-    begin = std::chrono::steady_clock::now();
-    results = exec::test::AssertQueryBuilder(myPlan2).copyResults(pool_.get());
-    end = std::chrono::steady_clock::now();
-
-    //std::cout << "Results:" << results->toString() << std::endl;
-    std::cout << "Single Batch with Transaction first Results Size: " << results->size() << std::endl;
-    std::cout << results->toString(0, 10) << std::endl;
-    std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
 
 
      auto myPlanParallel1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
@@ -1454,9 +1396,9 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          )
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
                          //.filter("transaction_id = 99210640002 or transaction_id = 7")
-                         /*.project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
+                         .project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
                          .filter("get_binary_class(fraudulent_probs) = 1")
-                         .filter("xgboost_fraud_predict(all_features) >= 0.5")*/
+                         .filter("xgboost_fraud_predict(all_features) >= 0.5")
                          .project({"transaction_id"})
                          .orderBy({fmt::format("{} ASC NULLS FIRST", "transaction_id")}, false)
                          .planNode();
@@ -1472,85 +1414,6 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
     std::cout << "Time for Executing with Multi Batch (sec): " << std::endl;
     std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
 
-
-
-    auto myPlanParallel2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                         .values(batchesTransaction)
-                         //.localPartition({"t_sender"})
-                         .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
-                         .filter("t_timestamp IS NOT NULL")
-                         .hashJoin({"t_sender"},
-                             {"o_customer_sk"},
-                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values(batchesOrder)
-                             //.localPartition({"o_customer_sk"})
-                             .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
-                             .filter("o_timestamp IS NOT NULL")
-                             .filter("is_weekday(o_timestamp) = 1")
-                             .partialAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
-                             //.localPartition({"o_customer_sk"})
-                             .finalAggregation()
-                             .project({"o_customer_sk", "total_order", "o_last_order_time"})
-                             .planNode(),
-                             "",
-                             {"transaction_id", "t_amount", "t_timestamp", "o_customer_sk", "total_order", "o_last_order_time"}
-                         )
-                         .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
-                         .filter("time_diff <= 500")
-                         .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
-                         .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
-                         .hashJoin({"o_customer_sk"},
-                             {"c_customer_sk"},
-                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values(batchesCustomer)
-                             //.localPartition({"c_customer_sk"})
-                             .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_country", "get_age(c_birth_year) as c_age"})
-                             .project({"c_customer_sk", "get_customer_features(c_address_num, c_cust_flag, c_birth_country, c_age) as customer_features"})
-                             .planNode(),
-                             "",
-                             {"transaction_id", "transaction_features", "customer_features"}
-                         )
-                         .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
-                         //.filter("transaction_id = 99210640002 or transaction_id = 7")
-                         /*.project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
-                         .filter("get_binary_class(fraudulent_probs) = 1")
-                         .filter("xgboost_fraud_predict(all_features) >= 0.5")*/
-                         .project({"transaction_id"})
-                         .orderBy({fmt::format("{} ASC NULLS FIRST", "transaction_id")}, false)
-                         .planNode();
-
-
-    begin = std::chrono::steady_clock::now();
-    results = exec::test::AssertQueryBuilder(myPlanParallel2).maxDrivers(4).copyResults(pool_.get());
-    end = std::chrono::steady_clock::now();
-
-    //std::cout << "Results:" << results->toString() << std::endl;
-    std::cout << "Multi Batch with Transaction first Results Size: " << results->size() << std::endl;
-    std::cout << results->toString(0, 10) << std::endl;
-    std::cout << "Time for Executing with Multi Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
-
-
-    struct std::tm t = {};
-    for (int i = 0; i < 3; i++) {
-    std:: string dateStr;
-    if (i == 0) {
-        dateStr = "2012-01-01";
-    }
-    else if (i == 1) {
-        dateStr = "2013-02-15";
-    }
-    else {
-        dateStr = "2013-12-31";
-    }
-        std::istringstream ss(dateStr);
-    ss >> std::get_time(&t, "%Y-%m-%d");
-
-      // Convert tm struct to time_t (timestamp)
-      time_t tt = mktime(&t);
-      int64_t timestamp = static_cast<int64_t>(tt);
-      std::cout << "returned time " << i << ": " << timestamp << std::endl;
-    }
 
  
 }
