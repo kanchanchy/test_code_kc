@@ -22,7 +22,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, pandas_udf, when, udf, max, count
+from pyspark.sql.functions import col, pandas_udf, when, udf, max, count, trim
 from pyspark.sql.types import IntegerType, ArrayType, FloatType, StringType, LongType
 import datetime
 import time
@@ -76,11 +76,11 @@ spark.conf.set("spark.sql.autoBroadcastJoinThreshold", "209715200")
 
 
 countryDict = {}
-with open('resources/data/country_mapping.txt', 'r') as file:
+with open('resources/model/country_mapping.txt', 'r') as file:
     for line in file:
         key, value = line.strip().split(",")
         countryDict[key] = int(value)
-print(countryDict)
+#print(countryDict)
 
 
 # In[7]:
@@ -96,9 +96,26 @@ map_country_udf = udf(mapCountry, IntegerType())
 # In[8]:
 
 
-dfOrder = spark.read.csv("resources/data/order.csv", header=True, inferSchema=True)
+def remove_quotes(numberStr):
+    if len(numberStr) >= 2 and numberStr[0] == '"' and numberStr[-1] == '"':
+        return numberStr[1:-1]
+    return numberStr
+
+remove_quotes_udf = udf(remove_quotes, StringType())
+
+
+# In[9]:
+
+
+dfOrder = spark.read.csv("resources/data/500_mb/order.csv", header=True, inferSchema=True)
 dfOrder = dfOrder.drop('store')
+
+str_cols = [field.name for field in dfOrder.schema.fields if isinstance(field.dataType, StringType)]
+for c in str_cols:
+    dfOrder = dfOrder.withColumn(c, remove_quotes_udf(col(c)))
+
 dfOrder = dfOrder.withColumn("o_order_id", col("o_order_id").cast(IntegerType())).withColumn("o_customer_sk", col("o_customer_sk").cast(IntegerType())).withColumn("o_date", col("date").cast(StringType()))
+dfOrder = dfOrder.drop('date')
 dfOrder = dfOrder.repartition("o_customer_sk")
 dfOrder.collect()
 print("Order table size: ", dfOrder.count())
@@ -106,12 +123,19 @@ dfOrder.cache()
 #dfOrder.show()
 
 
-# In[9]:
+# In[10]:
 
 
-dfTransaction = spark.read.csv("resources/data/financial_transactions.csv", header=True, inferSchema=True)
+dfTransaction = spark.read.csv("resources/data/500_mb/financial_transactions.csv", header=True, inferSchema=True)
 dfTransaction = dfTransaction.drop('receiverID')
+#dfTransaction = dfTransaction.dropna()
+
+str_cols = [field.name for field in dfTransaction.schema.fields if isinstance(field.dataType, StringType)]
+for c in str_cols:
+    dfTransaction = dfTransaction.withColumn(c, remove_quotes_udf(col(c)))
+    
 dfTransaction = dfTransaction.withColumn("amount", col("amount").cast(FloatType())).withColumn("senderID", col("senderID").cast(IntegerType())).withColumn("transactionID", col("transactionID").cast(IntegerType())).withColumn("t_time", col("time").cast(StringType()))
+dfTransaction = dfTransaction.drop('time')
 dfTransaction = dfTransaction.repartition("senderID")
 dfTransaction.collect()
 print("Transaction table size: ", dfTransaction.count())
@@ -119,14 +143,25 @@ dfTransaction.cache()
 #dfTransaction.show()
 
 
-# In[10]:
+# In[11]:
 
 
-dfCustomer = spark.read.csv("resources/data/customer.csv", header=True, inferSchema=True)
+dfCustomer = spark.read.csv("resources/data/500_mb/customer.csv", header=True, inferSchema=True)
 dfCustomer = dfCustomer.drop('c_customer_id').drop('c_first_name').drop('c_last_name').drop('c_birth_day').drop('c_birth_month').drop('c_login').drop('c_email_address')
+#dfCustomer = dfCustomer.dropna()
+
+'''str_cols = [field.name for field in dfCustomer.schema.fields if isinstance(field.dataType, StringType)]
+for c in str_cols:
+    dfCustomer = dfCustomer.withColumn(c, remove_quotes_udf(col(c)))'''
+
+column_names = dfCustomer.columns
+trimmed_columns = [trim(col(c)).alias(c) for c in column_names]
+dfCustomer = dfCustomer.select(*trimmed_columns)
+
 dfCustomer = dfCustomer.withColumn("c_customer_sk", col("c_customer_sk").cast(IntegerType())).withColumn("c_current_addr_sk", col("c_current_addr_sk").cast(IntegerType())).withColumn("c_birth_year", col("c_birth_year").cast(IntegerType())) 
 dfCustomer = dfCustomer.withColumn("c_preferred_cust_flag", when(col("c_preferred_cust_flag") == 'N', 0).otherwise(1))
 dfCustomer = dfCustomer.withColumn("c_birth_country", map_country_udf(col("c_birth_country")))
+dfCustomer = dfCustomer.fillna(0)
 dfCustomer = dfCustomer.repartition("c_customer_sk")
 dfCustomer.collect()
 print("Customer table size: ", dfCustomer.count())
@@ -134,41 +169,41 @@ dfCustomer.cache()
 #dfCustomer.show()
 
 
-# In[11]:
+# In[55]:
 
 
 def date_to_timestamp(date_str):
     # Parse the date string to a datetime object
     dt = datetime.datetime.strptime(date_str, '%Y-%m-%d')
     # Return the timestamp in milliseconds
-    return int(dt.timestamp())
+    return int(dt.timestamp()) - 25200
 
 # Register the UDF (specifying the return type as LongType)
 #date_to_timestamp_udf = udf(date_to_timestamp, LongType())
 spark.udf.register("date_to_timestamp_udf", date_to_timestamp, LongType())
 
 
-# In[12]:
+# In[56]:
 
 
 def datetime_to_timestamp(date_str):
     # Parse the date string to a datetime object
     dt = datetime.datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
     # Return the timestamp in milliseconds
-    return int(dt.timestamp())
+    return int(dt.timestamp()) - 25200
 
 # Register the UDF (specifying the return type as LongType)
 #date_to_timestamp_udf = udf(date_to_timestamp, LongType())
 spark.udf.register("datetime_to_timestamp_udf", datetime_to_timestamp, LongType())
 
 
-# In[13]:
+# In[14]:
 
 
 def is_weekday(timestamp):
     # Convert timestamp to datetime object
-    dt = datetime.datetime.fromtimestamp(timestamp / 1000.0)  # Convert milliseconds to seconds
-    weekday = (dt.weekday() + 1) % 7  # Monday is 0 and Sunday is 6
+    dt = datetime.datetime.fromtimestamp(timestamp)  # Convert milliseconds to seconds
+    weekday = (dt.weekday() + 1) % 7  # Monday is 1 and Sunday is 0
     if weekday == 0 or weekday == 6:
         return 0
     else:
@@ -179,24 +214,24 @@ def is_weekday(timestamp):
 spark.udf.register("is_weekday_udf", is_weekday, IntegerType())
 
 
-# In[14]:
+# In[15]:
 
 
 def time_diff_in_days(timestamp1, timestamp2):
     secondsInADay = 86400
-    return abs(timestamp1 - timestamp1)//secondsInADay
+    return abs(timestamp1 - timestamp2)//secondsInADay
 
 # Register the UDF (specifying the return type as LongType)
 #time_diff_in_days_udf = udf(time_diff_in_days, LongType())
 spark.udf.register("time_diff_in_days_udf", time_diff_in_days, LongType())
 
 
-# In[15]:
+# In[16]:
 
 
 def calculate_age(birth_year):
-    if birth_year is None:
-        birth_year = 0
+    '''if birth_year is None:
+        birth_year = 0'''
     current_year = datetime.datetime.now().year
     return current_year - birth_year
 
@@ -205,12 +240,12 @@ def calculate_age(birth_year):
 spark.udf.register("calculate_age_udf", calculate_age, IntegerType())
 
 
-# In[16]:
+# In[17]:
 
 
 def get_weekday(timestamp):
     # Convert timestamp to datetime object
-    dt = datetime.datetime.fromtimestamp(timestamp / 1000.0)  # Convert milliseconds to seconds
+    dt = datetime.datetime.fromtimestamp(timestamp)  # Convert milliseconds to seconds
     return (dt.weekday() + 1) % 7  # Monday is 0 and Sunday is 6
 
 # Register the UDF with Spark
@@ -218,18 +253,18 @@ def get_weekday(timestamp):
 spark.udf.register("get_weekday_udf", get_weekday, IntegerType())
 
 
-# In[17]:
+# In[18]:
 
 
 def get_customer_features(address_num, cust_flag, birth_country, age):
-    if address_num is None:
+    '''if address_num is None:
         address_num = 0
     if cust_flag is None:
         cust_flag = 0
     if birth_country is None:
         birth_country = 0
     if age is None:
-        age = 0
+        age = 0'''
         
     fAddressNum = float(address_num) / 35352.0
     fCustFlag = float(cust_flag)
@@ -242,24 +277,24 @@ def get_customer_features(address_num, cust_flag, birth_country, age):
 spark.udf.register("get_customer_features_udf", get_customer_features, ArrayType(FloatType()))
 
 
-# In[18]:
+# In[19]:
 
 
 def get_transaction_features(total_order, amount, time_diff, timestamp):
-    if total_order is None:
+    '''if total_order is None:
         total_order = 0
     if amount is None:
         amount = 0.0
     if time_diff is None:
         time_diff = 0
     if timestamp is None:
-        timestamp = 0
+        timestamp = 0'''
         
     fTotalOrder = float(total_order) / 79.0
     fAmount = amount / 16048.0
     fTimeDiff = float(time_diff) / 729.0
     
-    dt = datetime.datetime.fromtimestamp(timestamp / 1000.0)  # Convert milliseconds to seconds
+    dt = datetime.datetime.fromtimestamp(timestamp)  # Convert milliseconds to seconds
     fDayOfWeek = float((dt.weekday() + 1) % 7) / 6.0
     
     fDaysSinceEpoch = float(timestamp // 86400) / 15338.0
@@ -270,7 +305,7 @@ def get_transaction_features(total_order, amount, time_diff, timestamp):
 spark.udf.register("get_transaction_features_udf", get_transaction_features, ArrayType(FloatType()))
 
 
-# In[19]:
+# In[20]:
 
 
 def concatenate_features(array1, array2):
@@ -281,7 +316,7 @@ def concatenate_features(array1, array2):
 spark.udf.register("concatenate_features_udf", concatenate_features, ArrayType(FloatType()))
 
 
-# In[20]:
+# In[21]:
 
 
 # Load and register DNN the model
@@ -302,7 +337,7 @@ def predict_dnn(features):
 spark.udf.register("predict_dnn_udf", predict_dnn, IntegerType())
 
 
-# In[21]:
+# In[22]:
 
 
 # Load and register small xgboost model
@@ -320,7 +355,7 @@ predict_xgm_small_udf = udf(predict_xgb_small, FloatType())
 spark.udf.register("predict_xgb_small_udf", predict_xgb_small, FloatType())
 
 
-# In[22]:
+# In[23]:
 
 
 # Load and register large xgboost model
@@ -338,13 +373,7 @@ predict_xgb_large_udf = udf(predict_xgb_large, FloatType())
 spark.udf.register("predict_xgb_large_udf", predict_xgb_large, FloatType())
 
 
-# In[23]:
-
-
-t1 = time.time()
-
-
-# In[24]:
+# In[25]:
 
 
 dfOrder.createOrReplaceTempView("df_order")
@@ -352,7 +381,7 @@ dfTransaction.createOrReplaceTempView("df_transaction")
 dfCustomer.createOrReplaceTempView("df_customer")
 
 
-# In[25]:
+# In[57]:
 
 
 dfTemp = spark.sql("SELECT o_customer_sk, o_order_id, date_to_timestamp_udf(o_date) as o_timestamp FROM df_order")
@@ -362,7 +391,7 @@ dfTemp.createOrReplaceTempView("df_temp")
 #dfTemp.show()
 
 
-# In[26]:
+# In[59]:
 
 
 dfTemp2 = spark.sql("SELECT transactionID, senderID, amount, datetime_to_timestamp_udf(t_time) AS t_timestamp FROM df_transaction")
@@ -370,7 +399,7 @@ dfTemp2.createOrReplaceTempView("df_temp2")
 #dfTemp2.show()
 
 
-# In[27]:
+# In[61]:
 
 
 dfJoinTemp = spark.sql("SELECT o_customer_sk, total_order, transactionID, amount, t_timestamp, time_diff_in_days_udf(o_last_order_time, t_timestamp) AS time_diff FROM df_temp INNER JOIN df_temp2 ON o_customer_sk = senderID WHERE t_timestamp IS NOT NULL")
@@ -380,7 +409,7 @@ dfJoinTemp.createOrReplaceTempView("df_join_temp")
 #dfJoinTemp.show()
 
 
-# In[28]:
+# In[63]:
 
 
 dfTemp3 = spark.sql("SELECT c_customer_sk, get_customer_features_udf(c_current_addr_sk, c_preferred_cust_flag, c_birth_country, calculate_age_udf(c_birth_year)) AS customer_features FROM df_customer")
@@ -388,54 +417,29 @@ dfTemp3.createOrReplaceTempView("df_temp3")
 #dfTemp3.show()
 
 
-# In[29]:
+# In[64]:
 
 
 dfJoin = spark.sql("SELECT transactionID, concatenate_features_udf(customer_features, transaction_features) AS all_features FROM df_join_temp INNER JOIN df_temp3 ON o_customer_sk = c_customer_sk WHERE predict_xgb_small_udf(transaction_features) >= 0.5")
 dfJoin.createOrReplaceTempView("df_join")
+#dfJoin.count()
 #dfJoin.show()
 
 
-# In[30]:
+# In[68]:
 
 
-dfOutput = spark.sql("SELECT transactionID FROM df_join WHERE predict_dnn_udf(all_features) = 1 AND predict_xgb_large_udf(all_features) >= 0.5")
+tStart = time.time()
+dfOutput = spark.sql("SELECT transactionID FROM df_join WHERE predict_xgb_large_udf(all_features) >= 0.5 AND predict_dnn_udf(all_features) = 0")
 dfOutput.collect()
+tEnd = time.time()
 print("Query execution completed")
-#print(dfOutput.count())
+print("Execution Time: " + str(tEnd - tStart) + " Seconds")
 #dfOutput.show()
 
 
-# In[31]:
+# In[69]:
 
 
-t2 = time.time()
-run_time = (t2 - t1)
-print("Execution time: " + str(run_time) + " Seconds")
-
-
-# In[32]:
-
-
-'''dfFeature = spark.sql("SELECT transactionID, all_features FROM df_join WHERE transactionID = 7 OR transactionID = 99210640002")
-print(dfFeature.count())
-dfFeature.show()'''
-
-
-# In[33]:
-
-
-'''dfOutput = spark.sql("SELECT transactionID, predict_xgm_small_udf(transaction_features) AS xgb_small_prediction FROM df_join_temp")
-dfOutput.createOrReplaceTempView("df_output")
-dfOutput.show()
-
-dfOutput = spark.sql("SELECT transactionID, predict_dnn_udf(all_features) AS dnn_prediction FROM df_join")
-dfOutput.createOrReplaceTempView("df_output")
-dfOutput.show()'''
-
-
-# In[ ]:
-
-
-
+print(dfOutput.count())
 
