@@ -107,7 +107,7 @@ remove_quotes_udf = udf(remove_quotes, StringType())
 # In[9]:
 
 
-dfOrder = spark.read.csv("resources/data/1_gb/order.csv", header=True, inferSchema=True)
+dfOrder = spark.read.csv("resources/data/5_gb/order.csv", header=True, inferSchema=True)
 dfOrder = dfOrder.drop('store')
 
 str_cols = [field.name for field in dfOrder.schema.fields if isinstance(field.dataType, StringType)]
@@ -126,7 +126,7 @@ dfOrder.cache()
 # In[10]:
 
 
-dfTransaction = spark.read.csv("resources/data/1_gb/financial_transactions.csv", header=True, inferSchema=True)
+dfTransaction = spark.read.csv("resources/data/5_gb/financial_transactions.csv", header=True, inferSchema=True)
 dfTransaction = dfTransaction.drop('receiverID')
 #dfTransaction = dfTransaction.dropna()
 
@@ -146,7 +146,7 @@ dfTransaction.cache()
 # In[11]:
 
 
-dfCustomer = spark.read.csv("resources/data/1_gb/customer.csv", header=True, inferSchema=True)
+dfCustomer = spark.read.csv("resources/data/5_gb/customer.csv", header=True, inferSchema=True)
 dfCustomer = dfCustomer.drop('c_customer_id').drop('c_first_name').drop('c_last_name').drop('c_birth_day').drop('c_birth_month').drop('c_login').drop('c_email_address')
 #dfCustomer = dfCustomer.dropna()
 

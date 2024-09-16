@@ -1259,11 +1259,11 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                       
      std::string path = dataFile->path;
 
-     RowVectorPtr orderRowVector = getOrderData("resources/data/1_gb/order.csv");
+     RowVectorPtr orderRowVector = getOrderData("resources/data/5_gb/order.csv");
      std::cout << "orderRowVector data generated" << std::endl;
-     RowVectorPtr transactionRowVector = getTransactionData("resources/data/1_gb/financial_transactions.csv");
+     RowVectorPtr transactionRowVector = getTransactionData("resources/data/5_gb/financial_transactions.csv");
      std::cout << "transactionRowVector data generated" << std::endl;
-     RowVectorPtr customerRowVector = getCustomerData("resources/data/1_gb/customer.csv");
+     RowVectorPtr customerRowVector = getCustomerData("resources/data/5_gb/customer.csv");
      std::cout << "customerRowVector data generated" << std::endl;
 
      int totalRowsOrder = orderRowVector->size();
@@ -1272,7 +1272,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      std::cout << "order data size: " << totalRowsOrder << ",  transaction data size: " << totalRowsTransaction << ",  customer data size: " << totalRowsCustomer << std::endl;
 
-     int batch_counts = 6;
+     int batch_counts = 8;
      int batchSizeOrder = totalRowsOrder / batch_counts;
      int batchSizeTransaction = totalRowsTransaction / batch_counts;
      int batchSizeCustomer = totalRowsCustomer / batch_counts;
