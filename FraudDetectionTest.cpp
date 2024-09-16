@@ -88,10 +88,6 @@ class VectorAddition : public MLFunction {
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
-    auto arrayVector = args[1]->as<ArrayVector>();
-    int rowSize = arrayVector->sizeAt(0);
-    std::cout << "Row " << 0 << " has " << rowSize << " elements." << std::endl;
-
     auto input1Features = args[0]->as<ArrayVector>()->elements();
     float* input1Values = input1Features->values()->asMutable<float>();
 
@@ -804,6 +800,17 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
   std::vector<std::vector<float>> w11 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "w11", 0);
   std::vector<std::vector<float>> w12 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "w12", 0);
 
+  std::vector<std::vector<float>> b11;
+  int n_row = b1.size();
+  int n_col = b1[0].size();
+  for (int i = 0; i < n_row; i++) {
+      std::vector<float> temp;
+      for (int j = 0; j < n_col; j++) {
+          temp.push_back(b1[i][j]/2.0);
+      }
+      b11.push_back(temp);
+  }
+
   auto itemNNweight1Vector = maker.arrayVector<float>(w1, REAL());
   auto itemNNweight2Vector = maker.arrayVector<float>(w2, REAL());
   auto itemNNweight3Vector = maker.arrayVector<float>(w3, REAL());
@@ -812,6 +819,7 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
   auto itemNNBias3Vector = maker.arrayVector<float>(b3, REAL());
   auto itemNNweight11Vector = maker.arrayVector<float>(w11, REAL());
   auto itemNNweight12Vector = maker.arrayVector<float>(w12, REAL());
+  auto itemNNBias11Vector = maker.arrayVector<float>(b11, REAL());
 
   exec::registerVectorFunction(
       "mat_mul_1",
@@ -878,6 +886,12 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
           std::move(itemNNweight12Vector->elements()->values()->asMutable<float>()),
           5,
           32));
+
+  exec::registerVectorFunction(
+      "mat_vector_add_11",
+      MatrixVectorAddition::signatures(),
+      std::make_unique<MatrixVectorAddition>(
+          std::move(itemNNBias11Vector->elements()->values()->asMutable<float>()), 32));
 
   exec::registerVectorFunction(
           "vector_addition",
@@ -1484,14 +1498,14 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .filter("time_diff <= 500")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
                          .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
-                         .project({"o_customer_sk", "transaction_id", "mat_mul_12(transaction_features) as dnn_part12"})
+                         .project({"o_customer_sk", "transaction_id", "mat_vector_add_11(mat_mul_12(transaction_features)) as dnn_part12"})
                          .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values({customerRowVector})
                              .localPartition({"c_customer_sk"})
                              .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_country", "get_age(c_birth_year) as c_age"})
-                             .project({"c_customer_sk", "mat_mul_11(get_customer_features(c_address_num, c_cust_flag, c_birth_country, c_age)) as dnn_part11"})
+                             .project({"c_customer_sk", "mat_vector_add_11(mat_mul_11(get_customer_features(c_address_num, c_cust_flag, c_birth_country, c_age))) as dnn_part11"})
                              .planNode(),
                              "",
                              {"transaction_id", "dnn_part11", "dnn_part12"}
