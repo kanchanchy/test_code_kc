@@ -798,8 +798,8 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
   std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.bias", 0);
   std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight", 0);
   std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.bias", 0);
-  //std::vector<std::vector<float>> w11 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "w11", 0);
-  //std::vector<std::vector<float>> w12 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "w12", 0);
+  std::vector<std::vector<float>> w11 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "w11", 0);
+  std::vector<std::vector<float>> w12 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "w12", 0);
 
   auto itemNNweight1Vector = maker.arrayVector<float>(w1, REAL());
   auto itemNNweight2Vector = maker.arrayVector<float>(w2, REAL());
@@ -807,8 +807,8 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
   auto itemNNBias1Vector = maker.arrayVector<float>(b1, REAL());
   auto itemNNBias2Vector = maker.arrayVector<float>(b2, REAL());
   auto itemNNBias3Vector = maker.arrayVector<float>(b3, REAL());
-  //auto itemNNweight11Vector = maker.arrayVector<float>(w11, REAL());
-  //auto itemNNweight12Vector = maker.arrayVector<float>(w12, REAL());
+  auto itemNNweight11Vector = maker.arrayVector<float>(w11, REAL());
+  auto itemNNweight12Vector = maker.arrayVector<float>(w12, REAL());
 
   exec::registerVectorFunction(
       "mat_mul_1",
