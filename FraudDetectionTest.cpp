@@ -103,21 +103,16 @@ class VectorAddition : public MLFunction {
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
         input2Matrix(input2Values, numInput, inputDims_);
 
+    std::vector<std::vector<float>> results;
+
+    for (int i = 0; i < numInput; i++) {
+      Eigen::Matrix<float, 1, Eigen::Dynamic, Eigen::RowMajor> vSum = input1Matrix.row(i) + input2Matrix.row(i);
+      std::vector<float> std_vector(vSum.data(), vSum.data() + vSum.size());
+      results.push_back(std_vector);
+    }
+
     VectorMaker maker{context.pool()};
-    auto resultArray = maker.arrayVector<float>(numInput, inputDims_);
-
-    // Get a pointer to the output ArrayVector's underlying data
-    float* outputData = resultArray->values()->asMutable<float>();
-
-    // Map the output data to an Eigen matrix for efficient operations
-    Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-        outputMatrix(outputData, numInput, inputDims_);
-
-    // Perform element-wise addition using Eigen
-    outputMatrix = input1Matrix + input2Matrix;
-
-    // Set the output vector
-    output = resultArray;
+    output = maker.arrayVector<float>(results, REAL());
   }
 
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
