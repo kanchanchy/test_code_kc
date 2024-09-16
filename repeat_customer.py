@@ -15,7 +15,7 @@ def repeat_rows_with_new_ids(input_file, output_file, repetitions, dynamic_col="
     for _, row in df.iterrows():
         for i in range(repetitions):
             new_row = row.copy()
-            if repetitions > 0:
+            if i > 0:
                 max_id += 1
                 new_row[dynamic_col] = max_id
             new_rows.append(new_row)
@@ -29,4 +29,5 @@ def repeat_rows_with_new_ids(input_file, output_file, repetitions, dynamic_col="
 
 # Call the function with desired file paths and repetitions
 repeat_rows_with_new_ids('resources/data/customer.csv', 'resources/data/1_gb/customer.csv', 7, 'c_customer_sk')
+
 
