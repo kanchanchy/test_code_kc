@@ -7,7 +7,7 @@ def repeat_rows_with_new_ids(input_file, output_file, repetitions, dynamic_col="
 
     # Initial values for ID manipulation
     init_max_customer = 7070
-    final_max_customer = 56567
+    final_max_customer = 49496
 
     # Use chunksize to read the input CSV in smaller chunks
     chunk_size = 50000  # Adjust based on your memory constraints

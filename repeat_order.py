@@ -5,7 +5,7 @@ def repeat_rows_with_new_ids(input_file, output_file, repetitions, dynamic_col="
     df = pd.read_csv(input_file)
 
     init_max_customer = 7070
-    final_max_customer = 56567
+    final_max_customer = 49496
     
     if dynamic_col != "":
         max_id = df[dynamic_col].max()
