@@ -88,6 +88,10 @@ class VectorAddition : public MLFunction {
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
+    auto arrayVector = args[1]->as<ArrayVector>();
+    int rowSize = arrayVector->sizeAt(0);
+    std::cout << "Row " << 0 << " has " << rowSize << " elements." << std::endl;
+
     auto input1Features = args[0]->as<ArrayVector>()->elements();
     float* input1Values = input1Features->values()->asMutable<float>();
 
@@ -876,16 +880,9 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
           32));
 
   exec::registerVectorFunction(
-      "mat_vector_add_11",
-      MatrixVectorAddition::signatures(),
-      std::make_unique<MatrixVectorAddition>(
-          std::move(itemNNBias1Vector->elements()->values()->asMutable<float>()), 32));
-
-  exec::registerVectorFunction(
           "vector_addition",
           VectorAddition::signatures(),
           std::make_unique<VectorAddition>(32));
-  std::cout << "Completed registering function for vector_addition" << std::endl;
 
 
 }
