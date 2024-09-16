@@ -36,5 +36,6 @@ def repeat_rows_with_new_ids(input_file, output_file, repetitions, dynamic_col="
     new_df.to_csv(output_file, index=False)
 
 # Call the function with desired file paths and repetitions
-repeat_rows_with_new_ids('resources/data/order.csv', 'resources/data/1_gb/order.csv', 7, 'o_order_id')
+#repeat_rows_with_new_ids('resources/data/order.csv', 'resources/data/1_gb/order.csv', 7, 'o_order_id')
+repeat_rows_with_new_ids('resources/order.csv', 'resources/order_new.csv', 7, 'o_order_id')
 
