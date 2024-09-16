@@ -1272,7 +1272,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      std::cout << "order data size: " << totalRowsOrder << ",  transaction data size: " << totalRowsTransaction << ",  customer data size: " << totalRowsCustomer << std::endl;
 
-     int batch_counts = 4;
+     int batch_counts = 6;
      int batchSizeOrder = totalRowsOrder / batch_counts;
      int batchSizeTransaction = totalRowsTransaction / batch_counts;
      int batchSizeCustomer = totalRowsCustomer / batch_counts;
