@@ -68,7 +68,7 @@ def load_xgboost_model(model_path):
 # In[5]:
 
 
-spark = SparkSession.builder.appName("FraudDetectionSpark").config("spark.driver.memory", "16g").config("spark.dynamicAllocation.enabled", "true").getOrCreate()
+spark = SparkSession.builder.appName("FraudDetectionSpark").config("spark.driver.memory", "20g").config("spark.dynamicAllocation.enabled", "true").getOrCreate()
 spark.conf.set("spark.sql.autoBroadcastJoinThreshold", "209715200")
 
 
