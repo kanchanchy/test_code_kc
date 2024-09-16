@@ -51,7 +51,7 @@ class SimpleNN(nn.Module):
 # Load DNN model
 def load_dnn_model(num_feature, model_path):
     model = SimpleNN(num_feature)
-    model.load_state_dict(torch.load(model_path, map_location='cpu'))
+    model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=True))
     return model
 
 
@@ -441,5 +441,5 @@ print("Execution Time: " + str(tEnd - tStart) + " Seconds")
 # In[69]:
 
 
-print(dfOutput.count())
+#print(dfOutput.count())
 
