@@ -7,7 +7,7 @@ def repeat_rows_with_new_ids(input_file, output_file, repetitions, dynamic_col="
 
     # Initial values for ID manipulation
     init_max_customer = 7070
-    final_max_customer = 212129
+    final_max_customer = 84851
 
     # Use chunksize to read the input CSV in smaller chunks
     chunk_size = 50000  # Adjust based on your memory constraints
@@ -26,7 +26,7 @@ def repeat_rows_with_new_ids(input_file, output_file, repetitions, dynamic_col="
                     if i > 0:
                         max_id += 1
                         new_row[dynamic_col] = max_id
-                    if i > 34:
+                    if i > 14:
                         current_customer += 1
                         if current_customer > final_max_customer:
                             current_customer = init_max_customer + 1
@@ -41,6 +41,6 @@ def repeat_rows_with_new_ids(input_file, output_file, repetitions, dynamic_col="
 
 # Call the function with desired file paths and repetitions
 repeat_rows_with_new_ids('resources/data/financial_transactions.csv',
-                         'resources/data/5_gb/financial_transactions.csv',
-                         100, 'transactionID')
+                         'resources/data/2_gb/financial_transactions.csv',
+                         40, 'transactionID')
 

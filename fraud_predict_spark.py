@@ -437,6 +437,12 @@ print("Query execution completed")
 print("Execution Time: " + str(tEnd - tStart) + " Seconds")
 #dfOutput.show()
 
+# Open a file in write mode ('w'). This will create the file if it doesn't exist or overwrite it if it does.
+with open('run_time.txt', 'w') as file:
+    # Write a single line to the file
+    file.write("Execution Time: " + str(tEnd - tStart) + " Seconds")
+
+
 
 # In[69]:
 
