@@ -5,7 +5,7 @@ def repeat_rows_with_new_ids(input_file, output_file, repetitions, dynamic_col="
     df = pd.read_csv(input_file)
 
     init_max_customer = 7070
-    final_max_customer = 49496
+    final_max_customer = 212129
     
     if dynamic_col != "":
         max_id = df[dynamic_col].max()
@@ -21,7 +21,7 @@ def repeat_rows_with_new_ids(input_file, output_file, repetitions, dynamic_col="
             if i > 0:
                 max_id += 1
                 new_row[dynamic_col] = max_id
-            if i > 3:
+            if i > 11:
                 current_customer += 1
                 if current_customer > final_max_customer:
                     current_customer = init_max_customer + 1
@@ -36,5 +36,5 @@ def repeat_rows_with_new_ids(input_file, output_file, repetitions, dynamic_col="
     new_df.to_csv(output_file, index=False)
 
 # Call the function with desired file paths and repetitions
-repeat_rows_with_new_ids('resources/data/order.csv', 'resources/data/1_gb/order.csv', 7, 'o_order_id')
+repeat_rows_with_new_ids('resources/data/order.csv', 'resources/data/5_gb/order.csv', 30, 'o_order_id')
 
