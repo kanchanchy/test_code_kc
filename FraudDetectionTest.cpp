@@ -62,6 +62,8 @@
 #include <unordered_map>
 #include <H5Cpp.h>
 #include <Eigen/Dense>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 using namespace std;
 using namespace ml;
@@ -70,6 +72,46 @@ using namespace facebook::velox::test;
 using namespace facebook::velox::exec;
 using namespace facebook::velox::exec::test;
 using namespace facebook::velox::core;
+
+
+
+
+class CPUUtilizationTracker {
+public:
+    CPUUtilizationTracker() {
+        startCPUTime = getCPUTime();
+        startWallTime = std::chrono::steady_clock::now();
+    }
+
+    ~CPUUtilizationTracker() {
+        auto endWallTime = std::chrono::steady_clock::now();
+        double endCPUTime = getCPUTime();
+
+        // Calculate total CPU time (user + system)
+        double cpuTimeUsed = endCPUTime - startCPUTime;
+
+        // Calculate real elapsed time (wall time)
+        auto elapsedWallTime = std::chrono::duration_cast<std::chrono::milliseconds>(endWallTime - startWallTime).count() / 1000.0;
+
+        // CPU utilization as a percentage
+        double cpuUtilization = (cpuTimeUsed / elapsedWallTime) * 100.0;
+
+        std::cout << "CPU Utilization for the method: " << cpuUtilization << "%\n";
+    }
+
+private:
+    double startCPUTime;
+    std::chrono::steady_clock::time_point startWallTime;
+
+    // Method to get current CPU time (user + system)
+    double getCPUTime() {
+        struct rusage usage;
+        getrusage(RUSAGE_SELF, &usage);
+        double userCPUTime = usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6;
+        double sysCPUTime = usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6;
+        return userCPUTime + sysCPUTime;
+    }
+};
 
 
 
@@ -1422,6 +1464,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      }
 
      registerNNFunctions(9);
+     CPUUtilizationTracker tracker;
 
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
@@ -1547,7 +1590,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.localPartition({"o_customer_sk"})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
                          .filter("o_timestamp IS NOT NULL")
-                         //.filter("is_weekday(o_timestamp) = 1")
+                         .filter("is_weekday(o_timestamp) = 1")
                          .partialAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          //.localPartition({"o_customer_sk"})
                          .finalAggregation()
@@ -1564,10 +1607,10 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"}
                          )
                          .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
-                         //.filter("time_diff <= 500")
+                         .filter("time_diff <= 500")
                          .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
-                         //.filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
-                         /*.hashJoin({"o_customer_sk"},
+                         .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
+                         .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values(batchesCustomer)
@@ -1581,9 +1624,9 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
                          //.filter("transaction_id = 99210640002 or transaction_id = 7")
                          .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
-                         //.filter("get_binary_class(fraudulent_probs) = 1")
-                         //.filter("xgboost_fraud_predict(all_features) >= 0.5")
-                         .project({"transaction_id"})*/
+                         .filter("get_binary_class(fraudulent_probs) = 1")
+                         .filter("xgboost_fraud_predict(all_features) >= 0.5")
+                         .project({"transaction_id"})
                          .orderBy({fmt::format("{} ASC NULLS FIRST", "transaction_id")}, false)
                          .planNode();
 
