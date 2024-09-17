@@ -1470,7 +1470,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
 
-     /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+     auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
                          .localPartition({"o_customer_sk"})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
@@ -1508,9 +1508,9 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          )
                          .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
                          .project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
-                         //.filter("get_binary_class(fraudulent_probs) = 1")
-                         //.filter("xgboost_fraud_predict(all_features) >= 0.5")
-                         .project({"transaction_id", "fraudulent_probs"})
+                         .filter("get_binary_class(fraudulent_probs) = 1")
+                         .filter("xgboost_fraud_predict(all_features) >= 0.5")
+                         .project({"transaction_id"})
                          .orderBy({fmt::format("{} ASC NULLS FIRST", "transaction_id")}, false)
                          .planNode();
 
@@ -1523,7 +1523,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
     std::cout << "Single Batch with DNN first Results Size: " << results->size() << std::endl;
     std::cout << results->toString(0, 5) << std::endl;
     std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;*/
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
 
 
 
@@ -1585,7 +1585,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
 
-     auto myPlanParallel1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+     /*auto myPlanParallel1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values(batchesOrder)
                          //.localPartition({"o_customer_sk"})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
@@ -1639,7 +1639,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
     std::cout << "Multi Batch with DNN first Results Size: " << results1->size() << std::endl;
     std::cout << results1->toString(0, 5) << std::endl;
     std::cout << "Time for Executing with Multi Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end1 - begin1).count()) /1000000.0 << std::endl;
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end1 - begin1).count()) /1000000.0 << std::endl;*/
 
 
 
