@@ -107,8 +107,9 @@ class VectorAddition : public MLFunction {
 
     for (int i = 0; i < numInput; i++) {
       Eigen::Matrix<float, 1, Eigen::Dynamic, Eigen::RowMajor> vSum = input1Matrix.row(i) + input2Matrix.row(i);
+      std::vector<float> curVec = std::vec(vSum.data(), vSum.data() + vSum.size());
       //std::vector<float> std_vector(vSum.data(), vSum.data() + vSum.size());
-      results.push_back(vSum);
+      results.push_back(curVec);
     }
 
     VectorMaker maker{context.pool()};
