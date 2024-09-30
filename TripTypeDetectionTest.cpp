@@ -1004,8 +1004,8 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
                          .localPartition({"o_store"})
                          .project({"o_order_id", "o_customer_sk", "o_store", "o_date", "o_weekday"})
                          .filter("o_weekday != 'Sunday'")
-                         .project({"o_order_id", "customer_id_embedding(convert_int_array(o_customer_sk)) as customer_id_feature", "get_order_features(o_date, o_weekday) AS order_feature"})
-                         .project({"o_order_id", "concat(customer_id_feature, order_feature) as order_all_feature"})
+                         .project({"o_order_id", "o_store", "customer_id_embedding(convert_int_array(o_customer_sk)) as customer_id_feature", "get_order_features(o_date, o_weekday) AS order_feature"})
+                         .project({"o_order_id", "o_store", "concat(customer_id_feature, order_feature) as order_all_feature"})
                          .hashJoin({"o_store"},
                              {"s_store"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
