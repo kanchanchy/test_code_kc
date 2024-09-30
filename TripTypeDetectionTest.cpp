@@ -451,7 +451,7 @@ class TripTypeDetectionTest : public HiveConnectorTestBase {
   void run( int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath, std::string orderDataFilePath);
 
   RowVectorPtr getOrderData(std::string filePath);
-  RowVectorPtr getStoreData(std::string filePath)
+  RowVectorPtr getStoreData(std::string filePath);
   std::vector<std::vector<float>> loadHDF5Array(const std::string& filename, const std::string& datasetName, int doPrint);
   void testingWithRealData(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
 
