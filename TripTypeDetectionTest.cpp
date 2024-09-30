@@ -42,6 +42,7 @@
 #include "velox/ml_functions/DecisionTree.h"
 #include "velox/ml_functions/DecisionForest.h"
 #include "velox/ml_functions/XGBoost.h"
+#include "velox/ml_functions/UtilFunction.h"
 #include "velox/ml_functions/tests/MLTestUtility.h"
 #include "velox/ml_functions/functions.h"
 //#include "velox/ml_functions/Concat.h"
