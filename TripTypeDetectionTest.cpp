@@ -544,6 +544,11 @@ void TripTypeDetectionTest::registerNNFunctions(int numCols) {
 
 
   exec::registerVectorFunction(
+      "convert_int_array",
+      ConvertToIntArray::signatures(),
+      std::make_unique<ConvertToIntArray>());
+
+  exec::registerVectorFunction(
       "customer_id_embedding",
       Embedding::signatures(),
       std::make_unique<Embedding>(
@@ -996,7 +1001,7 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
      auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
                          .localPartition({"o_store"})
-                         .project({"o_order_id", "customer_id_embedding(o_customer_sk) as customer_id_feature", "get_order_features(o_date, o_weekday) AS order_feature"})
+                         .project({"o_order_id", "customer_id_embedding(convert_int_array(o_customer_sk)) as customer_id_feature", "get_order_features(o_date, o_weekday) AS order_feature"})
                          .project({"o_order_id", "concat(customer_id_feature, order_feature) as order_all_feature"})
                          .filter("o_weekday != Sunday")
                          .hashJoin({"o_store"},
