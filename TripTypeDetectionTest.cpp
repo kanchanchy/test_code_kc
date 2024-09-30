@@ -238,7 +238,7 @@ class GetOrderFeatures : public MLFunction {
 
       // Check if parsing was successful
       if (ss.fail()) {
-          std::cerr << "Failed to parse date string " << inputStr << std::endl;
+          std::cerr << "Failed to parse date string " << sTimestamp << std::endl;
           vec.push_back(0.0);
           continue;
       }
@@ -295,9 +295,6 @@ class GetOrderFeatures : public MLFunction {
 
 class IsPopularStore : public MLFunction {
  public:
-  VectorAddition(int inputDims) {
-    inputDims_ = inputDims;
-  }
 
   void apply(
       const SelectivityVector& rows,
@@ -342,7 +339,7 @@ class IsPopularStore : public MLFunction {
   }
 
   static std::string getName() {
-    return "is_popular_store ";
+    return "is_popular_store";
   };
 
   float* getTensor() const override {
@@ -355,8 +352,6 @@ class IsPopularStore : public MLFunction {
     return CostEstimate(0, inputDims[0], inputDims[1]);
   }
 
- private:
-  int inputDims_;
 };
 
 
@@ -537,6 +532,7 @@ void TripTypeDetectionTest::registerNNFunctions(int numCols) {
   }*/
 
   auto itemEmb1Vector = maker.arrayVector<float>(emb1, REAL());
+  auto itemNNweight1Vector = maker.arrayVector<float>(w1, REAL());
   auto itemNNweight2Vector = maker.arrayVector<float>(w2, REAL());
   auto itemNNweight3Vector = maker.arrayVector<float>(w3, REAL());
   auto itemNNBias1Vector = maker.arrayVector<float>(b1, REAL());
@@ -946,7 +942,7 @@ RowVectorPtr TripTypeDetectionTest::getStoreData(std::string filePath) {
 
      // Prepare Customer table
      auto sStoreVector = maker.flatVector<int>(sStore);
-     auto sFeaturesVector maker.arrayVector<float>(sFeatures, REAL());
+     auto sFeaturesVector = maker.arrayVector<float>(sFeatures, REAL());
      auto storeRowVector = maker.rowVector(
          {"s_store", "s_features"},
          {sStoreVector, sFeaturesVector}
