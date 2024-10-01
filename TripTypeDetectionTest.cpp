@@ -248,7 +248,7 @@ class GetOrderFeatures : public MLFunction {
           time_t tt = mktime(&t);
           // Cast time_t to int64_t
           int64_t longTimestamp = static_cast<int64_t>(tt);
-          vec.push_back(static_cast<float>(longTimestamp/secondsInADay));
+          vec.push_back((static_cast<float>(longTimestamp/secondsInADay))/15340.0);
       }
 
       for (int i = 0; i < 7; i++) {
@@ -315,9 +315,22 @@ class IsPopularStore : public MLFunction {
     std::vector<int> results;
 
     for (int i = 0; i < rows.size(); i++) {
-      std::vector<float> vecStore = decodedArray->valueAt<std::vector<float>>(i);
+      /*std::vector<float> vecStore = decodedArray->valueAt<std::vector<float>>(i);
       float sumRes = std::accumulate(vecStore.begin(), vecStore.end(), 0.0);
-      float meanRes = sumRes / vecStore.size();
+      float meanRes = sumRes / vecStore.size();*/
+
+      auto arrayVector = decodedArray->base()->as<ArrayVector>();
+      auto arrayIndex = decodedArray->index(i);
+      auto size = arrayVector->sizeAt(arrayIndex);
+      auto offset = arrayVector->offsetAt(arrayIndex);
+
+      float sumRes = 0.0;
+      for (int j = 0; j < size; ++j) {
+        float element = arrayVector->elements()->asFlatVector<float>()->valueAt(offset + j);
+        sumRes += element;
+      }
+      float meanRes = sumRes / size;
+
       if (meanRes >= 0.5) {
           results.push_back(1);
       }
@@ -1012,7 +1025,7 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
                              .values({storeRowVector})
                              .localPartition({"s_store"})
                              .project({"s_store", "s_features as store_feature"})
-                             //.filter("is_popular_store(store_feature) = 1")
+                             .filter("is_popular_store(store_feature) = 1")
                              .planNode(),
                              "",
                              {"o_order_id", "order_all_feature", "store_feature"}
