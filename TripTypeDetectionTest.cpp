@@ -1169,8 +1169,8 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
 
 
      auto myPlanParallel11 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                         .values(batchesOrder)
-                         //.localPartition({"o_store"})
+                         .values({orderRowVector})
+                         .localPartition({"o_store"})
                          .project({"o_order_id", "o_customer_sk", "o_store", "o_date", "o_weekday"})
                          .filter("o_weekday != 'Sunday'")
                          .project({"o_order_id", "o_store", "customer_id_embedding(convert_int_array(o_customer_sk)) as customer_id_feature", "get_order_features(o_date, o_weekday) AS order_feature"})
@@ -1178,8 +1178,8 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
                          .hashJoin({"o_store"},
                              {"s_store"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values(batchesStore)
-                             //.localPartition({"s_store"})
+                             .values({storeRowVector})
+                             .localPartition({"s_store"})
                              .project({"s_store", "s_features as store_feature"})
                              .filter("is_popular_store(store_feature) = 1")
                              .planNode(),
