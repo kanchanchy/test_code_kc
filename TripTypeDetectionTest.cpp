@@ -1107,9 +1107,9 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
                              .project({"s_store", "mat_vector_add_1(mat_mul_12(store_feature)) as dnn_part2"})
                              .planNode(),
                              "",
-                             {"o_order_id", "order_all_feature", "store_feature"}
+                             {"o_order_id", "dnn_part1", "dnn_part2"}
                          )
-                         .project({"o_order_id", "vector_addition(dnn_part11, dnn_part12) AS all_features"})
+                         .project({"o_order_id", "vector_addition(dnn_part1, dnn_part2) AS all_feature"})
                          .project({"o_order_id", "get_max_index(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(all_feature)))))))) AS predicted_trip_type"})
                          //.project({"o_order_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_feature))))))))) AS predicted_trip_type"})
                          //.orderBy({fmt::format("{} ASC NULLS FIRST", "o_order_id")}, false)
