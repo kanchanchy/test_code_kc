@@ -1012,13 +1012,14 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
                              .values({storeRowVector})
                              .localPartition({"s_store"})
                              .project({"s_store", "s_features as store_feature"})
-                             .filter("is_popular_store(store_feature) = 1")
+                             //.filter("is_popular_store(store_feature) = 1")
                              .planNode(),
                              "",
                              {"o_order_id", "order_all_feature", "store_feature"}
                          )
                          .project({"o_order_id", "concat(order_all_feature, store_feature) AS all_feature"})
-                         .project({"o_order_id", "get_max_index(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_feature)))))))))) AS predicted_trip_type"})
+                         //.project({"o_order_id", "get_max_index(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_feature)))))))))) AS predicted_trip_type"})
+                         .project({"o_order_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_feature))))))))) AS predicted_trip_type"})
                          //.orderBy({fmt::format("{} ASC NULLS FIRST", "o_order_id")}, false)
                          .planNode();
 
