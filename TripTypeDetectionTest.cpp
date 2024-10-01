@@ -1053,7 +1053,7 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
 
-     /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+     auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
                          .localPartition({"o_store"})
                          .project({"o_order_id", "o_customer_sk", "o_store", "o_date", "o_weekday"})
@@ -1086,11 +1086,11 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
     std::cout << "Single Batch with DNN first Results Size: " << results->size() << std::endl;
     std::cout << results->toString(0, 5) << std::endl;
     std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;*/
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
 
 
 
-    auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+    /*auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
                          .localPartition({"o_store"})
                          .project({"o_order_id", "o_customer_sk", "o_store", "o_date", "o_weekday"})
@@ -1124,7 +1124,7 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
     std::cout << "Single Batch with DNN first Results Size: " << results2->size() << std::endl;
     std::cout << results2->toString(0, 5) << std::endl;
     std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end2 - begin2).count()) /1000000.0 << std::endl;
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end2 - begin2).count()) /1000000.0 << std::endl;*/
 
 
 
