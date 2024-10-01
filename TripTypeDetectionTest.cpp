@@ -1053,7 +1053,7 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
 
-     auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+     /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
                          .localPartition({"o_store"})
                          .project({"o_order_id", "o_customer_sk", "o_store", "o_date", "o_weekday"})
@@ -1086,65 +1086,45 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
     std::cout << "Single Batch with DNN first Results Size: " << results->size() << std::endl;
     std::cout << results->toString(0, 5) << std::endl;
     std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;*/
 
 
 
-    /*auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+    auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({orderRowVector})
-                         .localPartition({"o_customer_sk"})
-                         .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
-                         .filter("o_timestamp IS NOT NULL")
-                         .filter("is_weekday(o_timestamp) = 1")
-                         //.partialAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
-                         //.localPartition({"o_customer_sk"})
-                         //.finalAggregation()
-                         .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
-                         .hashJoin({"o_customer_sk"},
-                             {"t_sender"},
+                         .localPartition({"o_store"})
+                         .project({"o_order_id", "o_customer_sk", "o_store", "o_date", "o_weekday"})
+                         .filter("o_weekday != 'Sunday'")
+                         .project({"o_order_id", "o_store", "customer_id_embedding(convert_int_array(o_customer_sk)) as customer_id_feature", "get_order_features(o_date, o_weekday) AS order_feature"})
+                         .project({"o_order_id", "o_store", "mat_mul_11(concat(customer_id_feature, order_feature)) as dnn_part1"})
+                         .hashJoin({"o_store"},
+                             {"s_store"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values({transactionRowVector})
-                             .localPartition({"t_sender"})
-                             .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
-                             .filter("t_timestamp IS NOT NULL")
+                             .values({storeRowVector})
+                             .localPartition({"s_store"})
+                             .project({"s_store", "s_features as store_feature"})
+                             .filter("is_popular_store(store_feature) = 1")
+                             .project({"s_store", "mat_vector_add_1(mat_mul_12(store_feature)) as dnn_part2"})
                              .planNode(),
                              "",
-                             {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"}
+                             {"o_order_id", "order_all_feature", "store_feature"}
                          )
-                         .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
-                         .filter("time_diff <= 500")
-                         .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
-                         .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
-                         .project({"o_customer_sk", "transaction_id", "mat_mul_12(transaction_features) as dnn_part12"})
-                         .hashJoin({"o_customer_sk"},
-                             {"c_customer_sk"},
-                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values({customerRowVector})
-                             .localPartition({"c_customer_sk"})
-                             .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_country", "get_age(c_birth_year) as c_age"})
-                             .project({"c_customer_sk", "mat_vector_add_1(mat_mul_11(get_customer_features(c_address_num, c_cust_flag, c_birth_country, c_age))) as dnn_part11"})
-                             .planNode(),
-                             "",
-                             {"transaction_id", "dnn_part11", "dnn_part12"}
-                         )
-                         .project({"transaction_id", "vector_addition(dnn_part11, dnn_part12) AS all_features"})
-                         .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(all_features))))))) AS fraudulent_probs"})
-                         //.filter("get_binary_class(fraudulent_probs) = 1")
-                         //.filter("xgboost_fraud_predict(all_features) >= 0.5")
-                         .project({"transaction_id", "fraudulent_probs"})
-                         .orderBy({fmt::format("{} ASC NULLS FIRST", "transaction_id")}, false)
+                         .project({"o_order_id", "vector_addition(dnn_part11, dnn_part12) AS all_features"})
+                         .project({"o_order_id", "get_max_index(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(all_feature)))))))) AS predicted_trip_type"})
+                         //.project({"o_order_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_feature))))))))) AS predicted_trip_type"})
+                         //.orderBy({fmt::format("{} ASC NULLS FIRST", "o_order_id")}, false)
                          .planNode();
 
 
-    std::chrono::steady_clock::time_point begin11 = std::chrono::steady_clock::now();
-    auto results11 = exec::test::AssertQueryBuilder(myPlan2).copyResults(pool_.get());
-    std::chrono::steady_clock::time_point end11 = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point begin2 = std::chrono::steady_clock::now();
+    auto results2 = exec::test::AssertQueryBuilder(myPlan2).copyResults(pool_.get());
+    std::chrono::steady_clock::time_point end2 = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
-    std::cout << "Single Batch with Decomposition: " << results11->size() << std::endl;
-    std::cout << results11->toString(0, 5) << std::endl;
+    std::cout << "Single Batch with DNN first Results Size: " << results2->size() << std::endl;
+    std::cout << results2->toString(0, 5) << std::endl;
     std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end11 - begin11).count()) /1000000.0 << std::endl;*/
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end2 - begin2).count()) /1000000.0 << std::endl;
 
 
 
