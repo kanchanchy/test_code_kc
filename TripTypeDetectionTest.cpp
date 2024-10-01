@@ -402,19 +402,18 @@ class GetMaxIndex : public MLFunction {
       exec::EvalCtx& context,
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
-
-    std::vector<int> results;
+    auto* flatResult = output->asFlatVector<int32_t>();
 
     BaseVector* baseVec = args[0].get();
     exec::LocalDecodedVector vecHolder(context, *baseVec, rows);
     auto decodedArray = vecHolder.get();
+    auto arrayVector = decodedArray->base()->as<ArrayVector>();
+    auto flatElements = arrayVector->elements()->asFlatVector<float>();
     //auto inputProbs = decodedArray->base()->as<ArrayVector>();
     //auto inputProbsValues = inputProbs->elements()->asFlatVector<float>();
 
+    /*std::vector<int> results;
     for (int i = 0; i < rows.size(); i++) {
-        //int32_t offset = inputProbs->offsetAt(i);
-        //float prob_0 = inputProbsValues->valueAt(offset);
-        //float prob_1 = inputProbsValues->valueAt(offset + 1);
         std::vector<float> inputProbs = decodedArray->valueAt<std::vector<float>>(i);
         auto max_iter = std::max_element(inputProbs.begin(), inputProbs.end());
         int index_of_max = std::distance(inputProbs.begin(), max_iter);
@@ -422,9 +421,29 @@ class GetMaxIndex : public MLFunction {
     }
 
     VectorMaker maker{context.pool()};
-    //output = maker.flatVector<int>(results);
     auto localResult = maker.flatVector<int>(results);
-    context.moveOrCopyResult(localResult, rows, output);
+    context.moveOrCopyResult(localResult, rows, output);*/
+
+    rows.applyToSelected([&](vector_size_t row) {
+      if (decodedArray->isNullAt(row)) {
+        flatResult->setNull(row, true);  // Handle nulls
+        return;
+      }
+
+      // Get the array index, size, and offset for this row
+      auto arrayIndex = decodedArray->index(row);
+      auto size = arrayVector->sizeAt(arrayIndex);
+      auto offset = arrayVector->offsetAt(arrayIndex);
+
+      // Find the index of the maximum element in the array
+      auto maxIter = std::max_element(
+          flatElements->rawValues() + offset,
+          flatElements->rawValues() + offset + size);
+
+      int index_of_max = std::distance(flatElements->rawValues() + offset, maxIter);
+      flatResult->set(row, index_of_max);  // Set result in output vector
+    });
+
   }
 
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
@@ -1053,8 +1072,8 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
                              {"o_order_id", "order_all_feature", "store_feature"}
                          )
                          .project({"o_order_id", "concat(order_all_feature, store_feature) AS all_feature"})
-                         //.project({"o_order_id", "get_max_index(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_feature)))))))))) AS predicted_trip_type"})
-                         .project({"o_order_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_feature))))))))) AS predicted_trip_type"})
+                         .project({"o_order_id", "get_max_index(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_feature)))))))))) AS predicted_trip_type"})
+                         //.project({"o_order_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_feature))))))))) AS predicted_trip_type"})
                          //.orderBy({fmt::format("{} ASC NULLS FIRST", "o_order_id")}, false)
                          .planNode();
 
