@@ -305,19 +305,22 @@ class IsPopularStore : public MLFunction {
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
+    auto* flatResult = output->asFlatVector<int32_t>();
     BaseVector* parameter = args[0].get();
 
     exec::LocalDecodedVector vecHolder(context, *parameter, rows);
     auto decodedArray = vecHolder.get();
+    auto arrayVector = decodedArray->base()->as<ArrayVector>();
+    auto flatElements = arrayVector->elements()->asFlatVector<float>();
     //auto baseLeftArray = decodedLeftArray->base()->as<ArrayVector>()->elements();
     //float* input1Values = baseLeftArray->values()->asMutable<float>();
 
-    std::vector<int> results;
+    /*std::vector<int> results;
 
     for (int i = 0; i < rows.size(); i++) {
-      /*std::vector<float> vecStore = decodedArray->valueAt<std::vector<float>>(i);
-      float sumRes = std::accumulate(vecStore.begin(), vecStore.end(), 0.0);
-      float meanRes = sumRes / vecStore.size();*/
+      //std::vector<float> vecStore = decodedArray->valueAt<std::vector<float>>(i);
+      //float sumRes = std::accumulate(vecStore.begin(), vecStore.end(), 0.0);
+      //float meanRes = sumRes / vecStore.size();
 
       auto arrayVector = decodedArray->base()->as<ArrayVector>();
       auto arrayIndex = decodedArray->index(i);
@@ -337,12 +340,31 @@ class IsPopularStore : public MLFunction {
       else {
           results.push_back(0);
       }
+    } */
 
-    }
+    rows.applyToSelected([&](vector_size_t row) {
+      if (decodedArray->isNullAt(row)) {
+        flatResult->set(row, 0);  // Handle nulls
+        return;
+      }
 
-    VectorMaker maker{context.pool()};
-    auto localResult = maker.flatVector<int>(results);
-    context.moveOrCopyResult(localResult, rows, output);
+      auto arrayIndex = decodedArray->index(row);
+      int size = arrayVector->sizeAt(arrayIndex);  // Get the size of the array
+      int offset = arrayVector->offsetAt(arrayIndex);  // Get the offset
+
+      // Use std::accumulate directly over the flat elements vector
+      float sum = std::accumulate(
+          flatElements->rawValues() + offset,
+          flatElements->rawValues() + offset + size,
+          0.0f);
+
+      float mean = sum / size;
+      flatResult->set(row, mean >= 0.5f ? 1 : 0);  // Directly set result
+    });
+
+    //VectorMaker maker{context.pool()};
+    //auto localResult = maker.flatVector<int>(results);
+    //context.moveOrCopyResult(localResult, rows, output);
   }
 
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
