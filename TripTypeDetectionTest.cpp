@@ -357,9 +357,9 @@ class IsPopularStore : public MLFunction {
           flatElements->rawValues() + offset,
           flatElements->rawValues() + offset + size,
           0.0f);
-
-      float mean = sum / size;
-      flatResult->set(row, mean >= 0.5f ? 1 : 0);  // Directly set result
+      float firstElem = flatElements->valueAt(offset);
+      float mean = (sum - firstElem) / (size - 1);
+      flatResult->set(row, mean >= 0.4f ? 1 : 0);  // Directly set result
     });
 
     //VectorMaker maker{context.pool()};
@@ -1019,9 +1019,9 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
                       
      std::string path = dataFile->path;
 
-     RowVectorPtr orderRowVector = getOrderData("resources/data/order.csv");
+     RowVectorPtr orderRowVector = getOrderData("resources/data/500_mb/order.csv");
      std::cout << "orderRowVector data generated" << std::endl;
-     RowVectorPtr storeRowVector = getStoreData("resources/data/store_dept.csv");
+     RowVectorPtr storeRowVector = getStoreData("resources/data/500_mb/store_dept.csv");
      std::cout << "storeRowVector data generated" << std::endl;
 
      int totalRowsOrder = orderRowVector->size();
@@ -1125,6 +1125,46 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
     std::cout << results2->toString(0, 5) << std::endl;
     std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
     std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end2 - begin2).count()) /1000000.0 << std::endl;
+
+
+
+
+
+    /*auto myPlan3 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values(batchesOrder)
+                         //.localPartition({"o_store"})
+                         .project({"o_order_id", "o_customer_sk", "o_store", "o_date", "o_weekday"})
+                         .filter("o_weekday != 'Sunday'")
+                         .project({"o_order_id", "o_store", "customer_id_embedding(convert_int_array(o_customer_sk)) as customer_id_feature", "get_order_features(o_date, o_weekday) AS order_feature"})
+                         .project({"o_order_id", "o_store", "mat_mul_11(concat(customer_id_feature, order_feature)) as dnn_part1"})
+                         .hashJoin({"o_store"},
+                             {"s_store"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values({storeRowVector})
+                             .localPartition({"s_store"})
+                             .project({"s_store", "s_features as store_feature"})
+                             .filter("is_popular_store(store_feature) = 1")
+                             .project({"s_store", "mat_vector_add_1(mat_mul_12(store_feature)) as dnn_part2"})
+                             .planNode(),
+                             "",
+                             {"o_order_id", "dnn_part1", "dnn_part2"}
+                         )
+                         .project({"o_order_id", "vector_addition(dnn_part1, dnn_part2) AS all_feature"})
+                         .project({"o_order_id", "get_max_index(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(all_feature)))))))) AS predicted_trip_type"})
+                         //.project({"o_order_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_feature))))))))) AS predicted_trip_type"})
+                         //.orderBy({fmt::format("{} ASC NULLS FIRST", "o_order_id")}, false)
+                         .planNode();
+
+
+    std::chrono::steady_clock::time_point begin3 = std::chrono::steady_clock::now();
+    auto results3 = exec::test::AssertQueryBuilder(myPlan3).copyResults(pool_.get());
+    std::chrono::steady_clock::time_point end3 = std::chrono::steady_clock::now();
+
+    //std::cout << "Results:" << results->toString() << std::endl;
+    std::cout << "Single Batch with DNN first Results Size: " << results3->size() << std::endl;
+    std::cout << results3->toString(0, 5) << std::endl;
+    std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end3 - begin3).count()) /1000000.0 << std::endl;*/
 
 
 

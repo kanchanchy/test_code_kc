@@ -59,7 +59,7 @@ def load_dnn_model(num_unique_customer, embedding_dim, input_size, output_size, 
 
 # Define your PostgreSQL connection details
 username = 'postgres'       # Replace with your username
-password = ''               # Replace with your password (if any)
+password = 'postgres'               # Replace with your password (if any)
 hostname = 'localhost'      # Replace with your hostname
 port = '5432'               # Replace with your port
 database_name = 'postgres'  # Replace with your database name
