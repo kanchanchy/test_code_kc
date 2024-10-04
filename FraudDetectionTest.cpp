@@ -1421,7 +1421,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              "",
                              {"transaction_id", "t_timestamp", "transaction_feature", "c_birth_year", "customer_feature"}
                          )
-                         .filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
+                         //.filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
                          .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(concat(customer_feature, transaction_feature)))))))))) AS fraudulent_probs"})
                          //.filter("get_binary_class(fraudulent_probs) = 1")
                          //.project({"transaction_id"})
