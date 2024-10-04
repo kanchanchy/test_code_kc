@@ -196,7 +196,7 @@ class VectorAddition : public MLFunction {
 
 
 
-class IsWeekday : public MLFunction {
+class IsWorkingDay : public MLFunction {
  public:
 
   void apply(
@@ -212,11 +212,11 @@ class IsWeekday : public MLFunction {
     BaseVector* baseVec = args[0].get();
     exec::LocalDecodedVector vecHolder(context, *baseVec, rows);
     auto decodedArray = vecHolder.get();
-    auto inputTimes = decodedArray->base()->as<FlatVector<int64_t>>();
+    //auto inputTimes = decodedArray->base()->as<FlatVector<int64_t>>();
 
     const int secondsInADay = 86400;
     for (int i = 0; i < rows.size(); i++) {
-        int64_t timestamp = inputTimes->valueAt(i);
+        int64_t timestamp = decodedArray->valueAt<int64_t>(i);
 
         std::time_t time = static_cast<std::time_t>(timestamp);
         std::tm* time_info = std::localtime(&time);
@@ -238,7 +238,9 @@ class IsWeekday : public MLFunction {
     }
 
     VectorMaker maker{context.pool()};
-    output = maker.flatVector<int>(results);
+    //output = maker.flatVector<int>(results);
+    auto localResult = maker.flatVector<int>(results);
+    context.moveOrCopyResult(localResult, rows, output);
   }
 
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
@@ -249,7 +251,7 @@ class IsWeekday : public MLFunction {
   }
 
   static std::string getName() {
-    return "is_weekday";
+    return "is_working_day";
   }
 
   float* getTensor() const override {
@@ -265,7 +267,7 @@ class IsWeekday : public MLFunction {
 };
 
 
-class GetAge : public MLFunction {
+class AgeDuringTransaction : public MLFunction {
  public:
 
   void apply(
@@ -278,10 +280,15 @@ class GetAge : public MLFunction {
 
     std::vector<int> results;
 
-    BaseVector* baseVec = args[0].get();
-    exec::LocalDecodedVector vecHolder(context, *baseVec, rows);
-    auto decodedArray = vecHolder.get();
-    auto birthYears = decodedArray->base()->as<FlatVector<int>>();
+    BaseVector* base0 = args[0].get();
+    BaseVector* base1 = args[1].get();
+
+    exec::LocalDecodedVector vecHolder0(context, *base0, rows);
+    auto decodedArray0 = vecHolder0.get();
+
+    exec::LocalDecodedVector vecHolder1(context, *base1, rows);
+    auto decodedArray1 = vecHolder1.get();
+    //auto birthYears = decodedArray->base()->as<FlatVector<int>>();
 
     auto now = std::chrono::system_clock::now();
     std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
@@ -289,23 +296,33 @@ class GetAge : public MLFunction {
     int currentYear = 1900 + localTime->tm_year;
 
     for (int i = 0; i < rows.size(); i++) {
-        int birthYear = birthYears->valueAt(i);
-        results.push_back(currentYear - birthYear);
+        int64_t tTimestamp = decodedArray0->valueAt<int64_t>(i);
+        int birthYear = decodedArray1->valueAt<int>(i);
+
+        // Calculate year
+        std::time_t time = static_cast<std::time_t>(tTimestamp);
+        std::tm* time_info = std::localtime(&time);
+        int year = static_cast<int>(time_info->tm_year);
+
+        results.push_back(year - birthYear);
     }
 
     VectorMaker maker{context.pool()};
-    output = maker.flatVector<int>(results);
+    //output = maker.flatVector<int>(results);
+    auto localResult = maker.flatVector<int>(results);
+    context.moveOrCopyResult(localResult, rows, output);
   }
 
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
     return {exec::FunctionSignatureBuilder()
+                .argumentType("BIGINT")
                 .argumentType("INTEGER")
                 .returnType("INTEGER")
                 .build()};
   }
 
   static std::string getName() {
-    return "get_age";
+    return "age_during_transaction";
   }
 
   float* getTensor() const override {
@@ -337,45 +354,33 @@ class GetTransactionFeatures : public MLFunction {
 
     BaseVector* base0 = args[0].get();
     BaseVector* base1 = args[1].get();
-    BaseVector* base2 = args[2].get();
-    BaseVector* base3 = args[3].get();
 
     exec::LocalDecodedVector firstHolder(context, *base0, rows);
     auto decodedArray0 = firstHolder.get();
-    auto totalOrders = decodedArray0->base()->as<FlatVector<int64_t>>();
+    //auto totalOrders = decodedArray0->base()->as<FlatVector<int64_t>>();
 
     exec::LocalDecodedVector secondHolder(context, *base1, rows);
     auto decodedArray1 = secondHolder.get();
-    auto tAmounts = decodedArray1->base()->as<FlatVector<float>>();
-
-    exec::LocalDecodedVector thirdHolder(context, *base2, rows);
-    auto decodedArray2 = thirdHolder.get();
-    auto timeDiffs = decodedArray2->base()->as<FlatVector<int64_t>>();
-
-    exec::LocalDecodedVector fourthHolder(context, *base3, rows);
-    auto decodedArray3 = fourthHolder.get();
-    auto tTimestamps = decodedArray3->base()->as<FlatVector<int64_t>>();
+    //auto tAmounts = decodedArray1->base()->as<FlatVector<float>>();
 
     for (int i = 0; i < rows.size(); i++) {
-        float totalOrder = (static_cast<float>(totalOrders->valueAt(i)))/79.0;
-        float tAmount = (tAmounts->valueAt(i))/16048.0;
-        float timeDiff = (static_cast<float>(timeDiffs->valueAt(i)))/729.0;
-        int64_t tTimestamp = tTimestamps->valueAt(i);
+        float tAmount = (decodedArray0->valueAt<float>(i))/16048.0;
+        int64_t tTimestamp = decodedArray1->valueAt<int64_t>(i);
 
         // Calculate day of week
         std::time_t time = static_cast<std::time_t>(tTimestamp);
         std::tm* time_info = std::localtime(&time);
+        float day = (static_cast<float>(time_info->tm_day))/31.0;
+        float month = (static_cast<float>(time_info->tm_month))/12.0;
+        float year = (static_cast<float>(time_info->tm_year))/2011.0;
         float dayOfWeek = (static_cast<float>(time_info->tm_wday))/6.0;
 
-        // Calculate the number of days since Unix epoch
-        float daysSinceEpoch = (static_cast<float>(tTimestamp / secondsInADay))/15338.0;
-
         std::vector<float> vec;
-        vec.push_back(totalOrder);
         vec.push_back(tAmount);
-        vec.push_back(timeDiff);
+        vec.push_back(day);
+        vec.push_back(month);
+        vec.push_back(year);
         vec.push_back(dayOfWeek);
-        vec.push_back(daysSinceEpoch);
 
         results.push_back(vec);
     }
@@ -386,9 +391,7 @@ class GetTransactionFeatures : public MLFunction {
 
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
     return {exec::FunctionSignatureBuilder()
-                .argumentType("BIGINT")
                 .argumentType("REAL")
-                .argumentType("BIGINT")
                 .argumentType("BIGINT")
                 .returnType("ARRAY(REAL)")
                 .build()};
@@ -433,31 +436,47 @@ class GetCustomerFeatures : public MLFunction {
 
     exec::LocalDecodedVector firstHolder(context, *base0, rows);
     auto decodedArray0 = firstHolder.get();
-    auto cAddressNums = decodedArray0->base()->as<FlatVector<int>>();
+    //auto cAddressNums = decodedArray0->base()->as<FlatVector<int>>();
 
     exec::LocalDecodedVector secondHolder(context, *base1, rows);
     auto decodedArray1 = secondHolder.get();
-    auto cCustFlags = decodedArray1->base()->as<FlatVector<int>>();
+    //auto cCustFlags = decodedArray1->base()->as<FlatVector<int>>();
 
-    exec::LocalDecodedVector thirdHolder(context, *base2, rows);
+    exec::LocalDecodedVector thirdHolder(context, *base3, rows);
     auto decodedArray2 = thirdHolder.get();
-    auto cBirthCountries = decodedArray2->base()->as<FlatVector<int>>();
+    //auto cAges = decodedArray3->base()->as<FlatVector<int>>();
 
     exec::LocalDecodedVector fourthHolder(context, *base3, rows);
     auto decodedArray3 = fourthHolder.get();
-    auto cAges = decodedArray3->base()->as<FlatVector<int>>();
+
+    exec::LocalDecodedVector fifthHolder(context, *base3, rows);
+    auto decodedArray4 = fifthHolder.get();
+
+    exec::LocalDecodedVector sixthHolder(context, *base2, rows);
+    auto decodedArray5 = sixthHolder.get();
+    //auto cBirthCountries = decodedArray2->base()->as<FlatVector<int>>();
+
+    exec::LocalDecodedVector seventhHolder(context, *base2, rows);
+    auto decodedArray6 = seventhHolder.get();
+
 
     for (int i = 0; i < rows.size(); i++) {
-        float cAddressNum = (static_cast<float>(cAddressNums->valueAt(i)))/35352.0;
-        float cCustFlag = static_cast<float>(cCustFlags->valueAt(i));
-        float cBirthCountry = (static_cast<float>(cBirthCountries->valueAt(i)))/211.0;
-        float cAge = (static_cast<float>(cAges->valueAt(i)))/94.0;
+        float cAddressNum = (static_cast<float>(decodedArray0->valueAt<int>(i)))/35352.0;
+        float cCustFlag = static_cast<float>(decodedArray1->valueAt<int>(i));
+        float cBirthDay = (static_cast<float>(decodedArray2->valueAt<int>(i)))/31.0;
+        float cBirthMonth = (static_cast<float>(decodedArray3->valueAt<int>(i)))/12.0;
+        float cBirthYear = (static_cast<float>(decodedArray4->valueAt<int>(i)))/2002.0;
+        float cBirthCountry = (static_cast<float>(decodedArray5->valueAt<int>(i)))/211.0;
+        float cTransactionLimit = (static_cast<float>(decodedArray6->valueAt<float>(i)))/16116.0;
 
         std::vector<float> vec;
         vec.push_back(cAddressNum);
         vec.push_back(cCustFlag);
+        vec.push_back(cBirthDay);
+        vec.push_back(cBirthMonth);
+        vec.push_back(cBirthYear);
         vec.push_back(cBirthCountry);
-        vec.push_back(cAge);
+        vec.push_back(cTransactionLimit);
 
         results.push_back(vec);
     }
@@ -472,6 +491,9 @@ class GetCustomerFeatures : public MLFunction {
                 .argumentType("INTEGER")
                 .argumentType("INTEGER")
                 .argumentType("INTEGER")
+                .argumentType("INTEGER")
+                .argumentType("INTEGER")
+                .argumentType("REAL")
                 .returnType("ARRAY(REAL)")
                 .build()};
   }
@@ -494,73 +516,6 @@ class GetCustomerFeatures : public MLFunction {
 
 
 
-class TimeDiffInDays : public MLFunction {
- public:
-
-  void apply(
-      const SelectivityVector& rows,
-      std::vector<VectorPtr>& args,
-      const TypePtr& type,
-      exec::EvalCtx& context,
-      VectorPtr& output) const override {
-    BaseVector::ensureWritable(rows, type, context.pool(), output);
-
-    BaseVector* left = args[0].get();
-    BaseVector* right = args[1].get();
-
-    exec::LocalDecodedVector leftHolder(context, *left, rows);
-    auto decodedLeftArray = leftHolder.get();
-    auto inputTimes1 = decodedLeftArray->base()->as<FlatVector<int64_t>>();
-
-    exec::LocalDecodedVector rightHolder(context, *right, rows);
-    auto decodedRightArray = rightHolder.get();
-    auto inputTimes2 = decodedRightArray->base()->as<FlatVector<int64_t>>();
-
-    std::vector<int64_t> results;
-    int secondsInADay = 86400;
-
-
-
-    for (int i = 0; i < rows.size(); i++) {
-
-        int64_t timestamp1 = inputTimes1->valueAt(i);
-        int64_t timestamp2 = inputTimes2->valueAt(i);
-
-        int64_t differenceInSeconds = std::abs(timestamp1 - timestamp2);
-        int64_t differenceInDays = differenceInSeconds / secondsInADay;
-
-        results.push_back(differenceInDays);
-    }
-
-    VectorMaker maker{context.pool()};
-    output = maker.flatVector<int64_t>(results);
-  }
-
-  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
-    return {exec::FunctionSignatureBuilder()
-                .argumentType("BIGINT")
-                .argumentType("BIGINT")
-                .returnType("BIGINT")
-                .build()};
-  }
-
-  static std::string getName() {
-    return "time_diff_in_days";
-  }
-
-  float* getTensor() const override {
-    // TODO: need to implement
-    return nullptr;
-  }
-
-  CostEstimate getCost(std::vector<int> inputDims) {
-    // TODO: need to implement
-    return CostEstimate(0, inputDims[0], inputDims[1]);
-  }
-
-};
-
-
 
 class DateToTimestamp : public MLFunction {
  public:
@@ -581,12 +536,12 @@ class DateToTimestamp : public MLFunction {
     auto decodedStringInput = decodedStringHolder.get();
 
     std::vector<int64_t> results;
-    struct std::tm t = {};
 
     for (int i = 0; i < rows.size(); i++) {
       StringView val = decodedStringInput->valueAt<StringView>(i);
       std::string inputStr = std::string(val);
 
+      struct std::tm t = {};
       std::istringstream ss(inputStr);
       ss >> std::get_time(&t, dateFormat);
 
@@ -648,7 +603,7 @@ class GetBinaryClass : public MLFunction {
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
-    std::vector<int> results;
+    auto* flatResult = output->asFlatVector<int32_t>();
 
     BaseVector* baseVec = args[0].get();
     exec::LocalDecodedVector vecHolder(context, *baseVec, rows);
@@ -656,21 +611,23 @@ class GetBinaryClass : public MLFunction {
     auto inputProbs = decodedArray->base()->as<ArrayVector>();
     auto inputProbsValues = inputProbs->elements()->asFlatVector<float>();
 
-    for (int i = 0; i < rows.size(); i++) {
-        int32_t offset = inputProbs->offsetAt(i);
-        float prob_0 = inputProbsValues->valueAt(offset);
-        float prob_1 = inputProbsValues->valueAt(offset + 1);
-        if (std::isnan(prob_0) || std::isnan(prob_1)) {
-            results.push_back(0);
-        }
-        else {
-            int predicted_class = (prob_0 > prob_1) ? 0 : 1;
-            results.push_back(predicted_class);
-        }
-    }
+    rows.applyToSelected([&](vector_size_t row) {
+      if (decodedArray->isNullAt(row)) {
+        flatResult->setNull(row, true);  // Handle nulls
+        return;
+      }
 
-    VectorMaker maker{context.pool()};
-    output = maker.flatVector<int>(results);
+      // Get the array index, size, and offset for this row
+      auto arrayIndex = decodedArray->index(row);
+      auto offset = inputProbs->offsetAt(arrayIndex);
+
+      float prob_0 = inputProbsValues->valueAt(offset);
+      float prob_1 = inputProbsValues->valueAt(offset + 1);
+      int predicted_class = (prob_0 > prob_1) ? 0 : 1;
+
+      flatResult->set(row, predicted_class);  // Set result in output vector
+    });
+
   }
 
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
@@ -727,7 +684,7 @@ class FraudDetectionTest : public HiveConnectorTestBase {
   void registerNNFunctions(int numCols);
   void run( int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath, std::string orderDataFilePath);
 
-  RowVectorPtr getOrderData(std::string filePath);
+  RowVectorPtr getAccountData(std::string filePath);
   RowVectorPtr getTransactionData(std::string filePath);
   RowVectorPtr getCustomerData(std::string filePath);
   std::vector<std::vector<float>> loadHDF5Array(const std::string& filename, const std::string& datasetName, int doPrint);
@@ -773,28 +730,17 @@ class FraudDetectionTest : public HiveConnectorTestBase {
 void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCols) {
   
   exec::registerVectorFunction(
-      "is_weekday",
-      IsWeekday::signatures(),
-      std::make_unique<IsWeekday>());
-  std::cout << "Completed registering function for is_weekday" << std::endl;
+      "is_working_day",
+      IsWorkingDay::signatures(),
+      std::make_unique<IsWorkingDay>());
+  std::cout << "Completed registering function for is_working_day" << std::endl;
 
   exec::registerVectorFunction(
-        "date_to_timestamp_1",
-        DateToTimestamp::signatures(),
-        std::make_unique<DateToTimestamp>("%Y-%m-%d"));
-  std::cout << "Completed registering function for date_to_timestamp_1" << std::endl;
-
-  exec::registerVectorFunction(
-        "date_to_timestamp_2",
+        "date_to_timestamp",
         DateToTimestamp::signatures(),
         std::make_unique<DateToTimestamp>("%Y-%m-%dT%H:%M"));
   std::cout << "Completed registering function for date_to_timestamp_2" << std::endl;
 
-  exec::registerVectorFunction(
-        "time_diff_in_days",
-        TimeDiffInDays::signatures(),
-        std::make_unique<TimeDiffInDays>());
-  std::cout << "Completed registering function for time_diff_in_days" << std::endl;
 
   exec::registerVectorFunction(
           "get_transaction_features",
@@ -809,15 +755,10 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
   std::cout << "Completed registering function for get_customer_features" << std::endl;
 
   exec::registerVectorFunction(
-          "get_age",
-          GetAge::signatures(),
-          std::make_unique<GetAge>());
+          "age_during_transaction",
+          AgeDuringTransaction::signatures(),
+          std::make_unique<AgeDuringTransaction>());
   std::cout << "Completed registering function for get_age" << std::endl;
-
-  exec::registerVectorFunction(
-        "concat_vectors2",
-        Concat::signatures(),
-        std::make_unique<Concat>(4, 5));
 
   exec::registerVectorFunction(
             "get_binary_class",
@@ -825,14 +766,7 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
             std::make_unique<GetBinaryClass>());
   std::cout << "Completed registering function for is_anomalous" << std::endl;
 
-  std::string xgboost_fraud_model_path = "resources/model/fraud_xgboost_9_1600";
-  exec::registerVectorFunction(
-        "xgboost_fraud_predict",
-        TreePrediction::signatures(),
-        std::make_unique<ForestPrediction>(xgboost_fraud_model_path, 9, true));
-  std::cout << "Completed registering function for xgboost_fraud_predict" << std::endl;
-
-  std::string xgboost_fraud_transaction_path = "resources/model/fraud_xgboost_5_16";
+  std::string xgboost_fraud_transaction_path = "resources/model/fraud_xgboost_trans_5_32";
     exec::registerVectorFunction(
           "xgboost_fraud_transaction",
           TreePrediction::signatures(),
@@ -844,14 +778,14 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
 
 void FraudDetectionTest::registerNNFunctions(int numCols) {
 
-  std::vector<std::vector<float>> w1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.weight", 0);
-  std::vector<std::vector<float>> b1 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc1.bias", 0);
-  std::vector<std::vector<float>> w2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.weight", 0);
-  std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc2.bias", 0);
-  std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.weight", 0);
-  std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "fc3.bias", 0);
-  std::vector<std::vector<float>> w11 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "w11", 0);
-  std::vector<std::vector<float>> w12 = loadHDF5Array("resources/model/fraud_dnn_weights.h5", "w12", 0);
+  std::vector<std::vector<float>> w1 = loadHDF5Array("resources/model/fraud_detection.h5", "fc1.weight", 0);
+  std::vector<std::vector<float>> b1 = loadHDF5Array("resources/model/fraud_detection.h5", "fc1.bias", 0);
+  std::vector<std::vector<float>> w2 = loadHDF5Array("resources/model/fraud_detection.h5", "fc2.weight", 0);
+  std::vector<std::vector<float>> b2 = loadHDF5Array("resources/model/fraud_detection.h5", "fc2.bias", 0);
+  std::vector<std::vector<float>> w3 = loadHDF5Array("resources/model/fraud_detection.h5", "fc3.weight", 0);
+  std::vector<std::vector<float>> b3 = loadHDF5Array("resources/model/fraud_detection.h5", "fc3.bias", 0);
+  std::vector<std::vector<float>> w11 = loadHDF5Array("resources/model/fraud_detection.h5", "w11", 0);
+  std::vector<std::vector<float>> w12 = loadHDF5Array("resources/model/fraud_detection.h5", "w12", 0);
 
   /*std::vector<std::vector<float>> b11;
   int n_row = b1.size();
@@ -894,20 +828,20 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
       std::make_unique<MatrixMultiply>(
           std::move(itemNNweight2Vector->elements()->values()->asMutable<float>()),
           32,
-          16));
+          12));
 
   exec::registerVectorFunction(
       "mat_vector_add_2",
       MatrixVectorAddition::signatures(),
       std::make_unique<MatrixVectorAddition>(
-          std::move(itemNNBias2Vector->elements()->values()->asMutable<float>()), 16));
+          std::move(itemNNBias2Vector->elements()->values()->asMutable<float>()), 12));
 
   exec::registerVectorFunction(
       "mat_mul_3",
       MatrixMultiply::signatures(),
       std::make_unique<MatrixMultiply>(
           std::move(itemNNweight3Vector->elements()->values()->asMutable<float>()),
-          16,
+          12,
           2));
 
   exec::registerVectorFunction(
@@ -929,7 +863,7 @@ void FraudDetectionTest::registerNNFunctions(int numCols) {
       MatrixMultiply::signatures(),
       std::make_unique<MatrixMultiply>(
           std::move(itemNNweight11Vector->elements()->values()->asMutable<float>()),
-          4,
+          7,
           32));
 
   exec::registerVectorFunction(
@@ -1151,7 +1085,7 @@ std::vector<std::vector<float>> FraudDetectionTest::loadHDF5Array(const std::str
 }
 
 
-RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
+RowVectorPtr FraudDetectionTest::getAccountData(std::string filePath) {
 
     std::ifstream file(filePath.c_str());
 
@@ -1162,10 +1096,8 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
 
     }
 
-    std::vector<int> oOrderId;
-    std::vector<int> oCustomerSk;
-    std::vector<std::string> oWeekday;
-    std::vector<std::string> oDate;
+    std::vector<int> faCustomerSk;
+    std::vector<float> faTransactionLimit;
     
     std::string line;
 
@@ -1187,24 +1119,15 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
 	    int colIndex = 0;
 
         while (std::getline(iss, numberStr, ',')) { // Read each number separated by comma
-            /*if (index < 5) {
-                std::cout << colIndex << ": " << numberStr << std::endl;
-            }*/
             // Trim leading and trailing whitespace from the input string (if any)
             if (numberStr.size() >= 2 && numberStr.front() == '"' && numberStr.back() == '"') {
                 numberStr = numberStr.substr(1, numberStr.size() - 2);
             }
             if (colIndex == 0) {
-                oOrderId.push_back(std::stoi(numberStr));
+                faCustomerSk.push_back(std::stoi(numberStr));
             }
             else if (colIndex == 1) {
-                oCustomerSk.push_back(std::stoi(numberStr));
-            }
-            else if (colIndex == 2) {
-                oWeekday.push_back(numberStr);
-            }
-            else if (colIndex == 3) {
-                oDate.push_back(numberStr);
+                faTransactionLimit.push_back(std::stof(numberStr));
             }
 
 	        colIndex ++;
@@ -1216,16 +1139,14 @@ RowVectorPtr FraudDetectionTest::getOrderData(std::string filePath) {
     file.close();
 
      // Prepare Customer table
-     auto oOrderIdVector = maker.flatVector<int>(oOrderId);
-     auto oCustomerSkVector = maker.flatVector<int>(oCustomerSk);
-     auto oWeekdayVector = maker.flatVector<std::string>(oWeekday);
-     auto oDateVector = maker.flatVector<std::string>(oDate);
-     auto orderRowVector = maker.rowVector(
-         {"o_order_id", "o_customer_sk", "o_weekday", "o_date"},
-         {oOrderIdVector, oCustomerSkVector, oWeekdayVector, oDateVector}
+     auto faCustomerSkVector = maker.flatVector<int>(faCustomerSk);
+     auto faTransactionLimitVector = maker.flatVector<float>(faTransactionLimit);
+     auto accountRowVector = maker.rowVector(
+         {"fa_customer_sk", "fa_transaction_limit"},
+         {faCustomerSkVector, faTransactionLimit}
      );
 
-     return orderRowVector;
+     return accountRowVector;
 }
 
 
@@ -1242,7 +1163,6 @@ RowVectorPtr FraudDetectionTest::getTransactionData(std::string filePath) {
 
     std::vector<float> tAmount;
     std::vector<int> tSender;
-    std::vector<std::string> tReceiver;
     std::vector<int64_t> transactionId;
     std::vector<std::string> tTime;
 
@@ -1267,9 +1187,6 @@ RowVectorPtr FraudDetectionTest::getTransactionData(std::string filePath) {
 	    int colIndex = 0;
 
         while (std::getline(iss, numberStr, ',')) { // Read each number separated by comma
-            /*if (index < 5) {
-                std::cout << colIndex << ": " << numberStr << std::endl;
-            }*/
             // Trim leading and trailing whitespace from the input string (if any)
             if (numberStr.size() >= 2 && numberStr.front() == '"' && numberStr.back() == '"') {
                 numberStr = numberStr.substr(1, numberStr.size() - 2);
@@ -1280,11 +1197,9 @@ RowVectorPtr FraudDetectionTest::getTransactionData(std::string filePath) {
             else if (colIndex == 1) {
                 tSender.push_back(std::stoi(numberStr));
             }
-            else if (colIndex == 2) {
-                tReceiver.push_back(numberStr);
-            }
             else if (colIndex == 3) {
-                transactionId.push_back(std::stoll(numberStr));
+                double numberDouble = std::stod(numberStr);
+                transactionId.push_back(static_cast<long long>(numberDouble));
             }
             else if (colIndex == 4) {
                 tTime.push_back(numberStr);
@@ -1301,12 +1216,11 @@ RowVectorPtr FraudDetectionTest::getTransactionData(std::string filePath) {
      // Prepare Customer table
      auto tAmountVector = maker.flatVector<float>(tAmount);
      auto tSenderVector = maker.flatVector<int>(tSender);
-     auto tReceiverVector = maker.flatVector<std::string>(tReceiver);
      auto transactionIdVector = maker.flatVector<int64_t>(transactionId);
      auto tTimeVector = maker.flatVector<std::string>(tTime);
      auto transactionRowVector = maker.rowVector(
-         {"t_amount", "t_sender", "t_receiver", "transaction_id", "t_time"},
-         {tAmountVector, tSenderVector, tReceiverVector, transactionIdVector, tTimeVector}
+         {"transaction_id", "t_sender", "t_amount", "t_time"},
+         {transactionIdVector, tSenderVector, tAmountVector, tTimeVector}
      );
 
      return transactionRowVector;
@@ -1327,6 +1241,8 @@ RowVectorPtr FraudDetectionTest::getCustomerData(std::string filePath) {
     std::vector<int> cCustomerSk;
     std::vector<int> cAddrerssNum;
     std::vector<int> cCustFlag;
+    std::vector<int> cBirthDay;
+    std::vector<int> cBirthMonth;
     std::vector<int> cBirthYear;
     std::vector<int> cBirthCountry;
 
@@ -1353,9 +1269,6 @@ RowVectorPtr FraudDetectionTest::getCustomerData(std::string filePath) {
 	    int colIndex = 0;
 
         while (std::getline(iss, numberStr, ',')) { // Read each number separated by comma
-            /*if (index < 5) {
-                std::cout << colIndex << ": " << numberStr << std::endl;
-            }*/
             // Trim leading and trailing whitespace from the input string (if any)
             if (numberStr.size() >= 2 && numberStr.front() == '"' && numberStr.back() == '"') {
                 numberStr = numberStr.substr(1, numberStr.size() - 2);
@@ -1381,6 +1294,12 @@ RowVectorPtr FraudDetectionTest::getCustomerData(std::string filePath) {
                     cCustFlag.push_back(0);
                 else
                     cCustFlag.push_back(1);
+            }
+            else if (colIndex == 6) {
+                cBirthDay.push_back(std::stoi(numberStr));
+            }
+            else if (colIndex == 7) {
+                cBirthMonth.push_back(std::stoi(numberStr));
             }
             else if (colIndex == 8) {
                 cBirthYear.push_back(std::stoi(numberStr));
@@ -1409,11 +1328,13 @@ RowVectorPtr FraudDetectionTest::getCustomerData(std::string filePath) {
      auto cCustomerSkVector = maker.flatVector<int>(cCustomerSk);
      auto cAddrerssNumVector = maker.flatVector<int>(cAddrerssNum);
      auto cCustFlagVector = maker.flatVector<int>(cCustFlag);
+     auto cBirthDayVector = maker.flatVector<int>(cBirthDay);
+     auto cBirthMonthVector = maker.flatVector<int>(cBirthMonth);
      auto cBirthYearVector = maker.flatVector<int>(cBirthYear);
      auto cBirthCountryVector = maker.flatVector<int>(cBirthCountry);
      auto customerRowVector = maker.rowVector(
-         {"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_year", "c_birth_country"},
-         {cCustomerSkVector, cAddrerssNumVector, cCustFlagVector, cBirthYearVector, cBirthCountryVector}
+         {"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country"},
+         {cCustomerSkVector, cAddrerssNumVector, cCustFlagVector, cBirthDayVector, cBirthMonthVector, cBirthYearVector, cBirthCountryVector}
      );
 
      return customerRowVector;
@@ -1427,32 +1348,32 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                       
      std::string path = dataFile->path;
 
-     RowVectorPtr orderRowVector = getOrderData("resources/data/1_gb/order.csv");
-     std::cout << "orderRowVector data generated" << std::endl;
-     RowVectorPtr transactionRowVector = getTransactionData("resources/data/1_gb/financial_transactions.csv");
+     RowVectorPtr accountRowVector = getAccountData("resources/data/financial_account.csv");
+     std::cout << "accountRowVector data generated" << std::endl;
+     RowVectorPtr transactionRowVector = getTransactionData("resources/data/financial_transactions.csv");
      std::cout << "transactionRowVector data generated" << std::endl;
-     RowVectorPtr customerRowVector = getCustomerData("resources/data/1_gb/customer.csv");
+     RowVectorPtr customerRowVector = getCustomerData("resources/data/customer.csv");
      std::cout << "customerRowVector data generated" << std::endl;
 
-     int totalRowsOrder = orderRowVector->size();
+     int totalRowsAccount = accountRowVector->size();
      int totalRowsTransaction = transactionRowVector->size();
      int totalRowsCustomer = customerRowVector->size();
 
-     std::cout << "order data size: " << totalRowsOrder << ",  transaction data size: " << totalRowsTransaction << ",  customer data size: " << totalRowsCustomer << std::endl;
+     std::cout << "account data size: " << totalRowsAccount << ",  transaction data size: " << totalRowsTransaction << ",  customer data size: " << totalRowsCustomer << std::endl;
 
      int batch_counts = 8;
-     int batchSizeOrder = totalRowsOrder / batch_counts;
+     int batchSizeAccount = totalRowsAccount / batch_counts;
      int batchSizeTransaction = totalRowsTransaction / batch_counts;
      int batchSizeCustomer = totalRowsCustomer / batch_counts;
 
-     std::vector<RowVectorPtr> batchesOrder;
+     std::vector<RowVectorPtr> batchesAccount;
      std::vector<RowVectorPtr> batchesTransaction;
      std::vector<RowVectorPtr> batchesCustomer;
 
      for (int i = 0; i < batch_counts; ++i) {
-         int start = i * batchSizeOrder;
-         int end = (i == (batch_counts - 1)) ? totalRowsOrder : (i + 1) * batchSizeOrder;  // Handle remainder for last batch
-         batchesOrder.push_back(std::dynamic_pointer_cast<RowVector>(orderRowVector->slice(start, end - start)));
+         int start = i * batchSizeAccount;
+         int end = (i == (batch_counts - 1)) ? totalRowsAccount : (i + 1) * batchSizeAccount;  // Handle remainder for last batch
+         batchesAccount.push_back(std::dynamic_pointer_cast<RowVector>(accountRowVector->slice(start, end - start)));
 
          start = i * batchSizeTransaction;
          end = (i == (batch_counts - 1)) ? totalRowsTransaction : (i + 1) * batchSizeTransaction;  // Handle remainder for last batch
@@ -1463,7 +1384,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
          batchesCustomer.push_back(std::dynamic_pointer_cast<RowVector>(customerRowVector->slice(start, end - start)));
      }
 
-     registerNNFunctions(9);
+     registerNNFunctions(12);
      CPUUtilizationTracker tracker;
 
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
@@ -1471,47 +1392,39 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
 
      auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                         .values({orderRowVector})
-                         .localPartition({"o_customer_sk"})
-                         .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
-                         .filter("o_timestamp IS NOT NULL")
-                         .filter("is_weekday(o_timestamp) = 1")
-                         //.partialAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
-                         //.localPartition({"o_customer_sk"})
-                         //.finalAggregation()
-                         .singleAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
-                         .hashJoin({"o_customer_sk"},
+                         .values({transactionRowVector})
+                         .localPartition({"t_sender"})
+                         .project({"transaction_id", "t_sender", "t_amount", "date_to_timestamp(t_time) as t_timestamp"})
+                         .filter("is_working_day(t_timestamp) = 1")
+                         .project({"transaction_id", "t_sender", "t_timestamp", "get_transaction_features(t_amount, t_timestamp) as transaction_feature"})
+                         .filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
+                         .hashJoin(
                              {"t_sender"},
-                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values({transactionRowVector})
-                             .localPartition({"t_sender"})
-                             .project({"t_amount", "t_sender", "t_receiver", "transaction_id", "date_to_timestamp_2(t_time) as t_timestamp"})
-                             .filter("t_timestamp IS NOT NULL")
-                             .planNode(),
-                             "",
-                             {"o_customer_sk", "total_order", "o_last_order_time", "transaction_id", "t_amount", "t_timestamp"}
-                         )
-                         .project({"o_customer_sk", "total_order", "transaction_id", "t_amount", "t_timestamp", "time_diff_in_days(o_last_order_time, t_timestamp) as time_diff"})
-                         .filter("time_diff <= 500")
-                         .project({"o_customer_sk", "transaction_id", "get_transaction_features(total_order, t_amount, time_diff, t_timestamp) as transaction_features"})
-                         .filter("xgboost_fraud_transaction(transaction_features) >= 0.5")
-                         .hashJoin({"o_customer_sk"},
                              {"c_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values({customerRowVector})
                              .localPartition({"c_customer_sk"})
-                             .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_country", "get_age(c_birth_year) as c_age"})
-                             .project({"c_customer_sk", "get_customer_features(c_address_num, c_cust_flag, c_birth_country, c_age) as customer_features"})
+                             .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country"})
+                             .hashJoin(
+                                 {"c_customer_sk"},
+                                 {"fa_customer_sk"},
+                                 exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                                 .values({accountRowVector})
+                                 .localPartition({"fa_customer_sk"})
+                                 .project({"fa_customer_sk", "fa_transaction_limit"})
+                                 .planNode(),
+                                 "",
+                                 {"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country", "fa_transaction_limit"}
+                             )
+                             .project({"c_customer_sk", "c_birth_year", "get_customer_features(c_address_num, c_cust_flag, c_birth_day, c_birth_month, c_birth_year, c_birth_country, fa_transaction_limit) as customer_feature"})
                              .planNode(),
                              "",
-                             {"transaction_id", "transaction_features", "customer_features"}
+                             {"transaction_id", "t_timestamp", "transaction_feature", "c_birth_year", "customer_feature"}
                          )
-                         .project({"transaction_id", "concat_vectors2(customer_features, transaction_features) AS all_features"})
-                         .project({"transaction_id", "all_features", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_features))))))))) AS fraudulent_probs"})
-                         .filter("get_binary_class(fraudulent_probs) = 1")
-                         .filter("xgboost_fraud_predict(all_features) >= 0.5")
-                         .project({"transaction_id"})
-                         .orderBy({fmt::format("{} ASC NULLS FIRST", "transaction_id")}, false)
+                         .filter("age_during_transaction(t_timestamp, c_birth_year)")
+                         .project({"transaction_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(concat(customer_feature, transaction_feature)))))))))) AS fraudulent_probs"})
+                         //.filter("get_binary_class(fraudulent_probs) = 1")
+                         //.project({"transaction_id"})
                          .planNode();
 
 
@@ -1528,11 +1441,11 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
     /*auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                         .values({orderRowVector})
+                         .values({accountRowVector})
                          .localPartition({"o_customer_sk"})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
                          .filter("o_timestamp IS NOT NULL")
-                         .filter("is_weekday(o_timestamp) = 1")
+                         .filter("is_working_day(o_timestamp) = 1")
                          //.partialAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          //.localPartition({"o_customer_sk"})
                          //.finalAggregation()
@@ -1586,11 +1499,11 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
      /*auto myPlanParallel1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                         .values(batchesOrder)
+                         .values(batchesAccount)
                          //.localPartition({"o_customer_sk"})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
                          .filter("o_timestamp IS NOT NULL")
-                         .filter("is_weekday(o_timestamp) = 1")
+                         .filter("is_working_day(o_timestamp) = 1")
                          .partialAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          //.localPartition({"o_customer_sk"})
                          .finalAggregation()
@@ -1645,11 +1558,11 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
     /*auto myPlanParallel12 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                         .values(batchesOrder)
+                         .values(batchesAccount)
                          //.localPartition({"o_customer_sk"})
                          .project({"o_customer_sk", "o_order_id", "date_to_timestamp_1(o_date) AS o_timestamp"})
                          .filter("o_timestamp IS NOT NULL")
-                         //.filter("is_weekday(o_timestamp) = 1")
+                         //.filter("is_working_day(o_timestamp) = 1")
                          .partialAggregation({"o_customer_sk"}, {"count(o_order_id) as total_order", "max(o_timestamp) as o_last_order_time"})
                          //.localPartition({"o_customer_sk"})
                          .finalAggregation()
