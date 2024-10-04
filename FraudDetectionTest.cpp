@@ -214,13 +214,13 @@ class IsWorkingDay : public MLFunction {
     auto decodedArray = vecHolder.get();
     //auto inputTimes = decodedArray->base()->as<FlatVector<int64_t>>();
 
-    const int secondsInADay = 86400;
+    //const int secondsInADay = 86400;
     for (int i = 0; i < rows.size(); i++) {
         int64_t timestamp = decodedArray->valueAt<int64_t>(i);
 
         std::time_t time = static_cast<std::time_t>(timestamp);
         std::tm* time_info = std::localtime(&time);
-        int dayOfWeek = time_info->tm_wday;
+        int dayOfWeek = static_cast<int>(time_info->tm_wday);
 
         /*int64_t daysSinceEpoch = timestamp / secondsInADay;
         // Unix epoch (Jan 1, 1970) was a Thursday, so dayOfWeek for epoch is 4 (0=Sunday, 6=Saturday)
