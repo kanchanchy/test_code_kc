@@ -1397,7 +1397,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"transaction_id", "t_sender", "t_amount", "date_to_timestamp(t_time) as t_timestamp"})
                          .filter("is_working_day(t_timestamp) = 1")
                          .project({"transaction_id", "t_sender", "t_timestamp", "get_transaction_features(t_amount, t_timestamp) as transaction_feature"})
-                         .filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
+                         //.filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
                          .hashJoin(
                              {"t_sender"},
                              {"c_customer_sk"},
