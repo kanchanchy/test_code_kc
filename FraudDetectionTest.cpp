@@ -428,6 +428,9 @@ class GetCustomerFeatures : public MLFunction {
     BaseVector* base1 = args[1].get();
     BaseVector* base2 = args[2].get();
     BaseVector* base3 = args[3].get();
+    BaseVector* base4 = args[4].get();
+    BaseVector* base5 = args[5].get();
+    BaseVector* base6 = args[6].get();
 
     exec::LocalDecodedVector firstHolder(context, *base0, rows);
     auto decodedArray0 = firstHolder.get();
@@ -437,21 +440,21 @@ class GetCustomerFeatures : public MLFunction {
     auto decodedArray1 = secondHolder.get();
     //auto cCustFlags = decodedArray1->base()->as<FlatVector<int>>();
 
-    exec::LocalDecodedVector thirdHolder(context, *base3, rows);
+    exec::LocalDecodedVector thirdHolder(context, *base2, rows);
     auto decodedArray2 = thirdHolder.get();
     //auto cAges = decodedArray3->base()->as<FlatVector<int>>();
 
     exec::LocalDecodedVector fourthHolder(context, *base3, rows);
     auto decodedArray3 = fourthHolder.get();
 
-    exec::LocalDecodedVector fifthHolder(context, *base3, rows);
+    exec::LocalDecodedVector fifthHolder(context, *base4, rows);
     auto decodedArray4 = fifthHolder.get();
 
-    exec::LocalDecodedVector sixthHolder(context, *base2, rows);
+    exec::LocalDecodedVector sixthHolder(context, *base5, rows);
     auto decodedArray5 = sixthHolder.get();
     //auto cBirthCountries = decodedArray2->base()->as<FlatVector<int>>();
 
-    exec::LocalDecodedVector seventhHolder(context, *base2, rows);
+    exec::LocalDecodedVector seventhHolder(context, *base6, rows);
     auto decodedArray6 = seventhHolder.get();
 
 
