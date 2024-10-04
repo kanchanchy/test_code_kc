@@ -290,11 +290,6 @@ class AgeDuringTransaction : public MLFunction {
     auto decodedArray1 = vecHolder1.get();
     //auto birthYears = decodedArray->base()->as<FlatVector<int>>();
 
-    auto now = std::chrono::system_clock::now();
-    std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
-    std::tm* localTime = std::localtime(&currentTime);
-    int currentYear = 1900 + localTime->tm_year;
-
     for (int i = 0; i < rows.size(); i++) {
         int64_t tTimestamp = decodedArray0->valueAt<int64_t>(i);
         int birthYear = decodedArray1->valueAt<int>(i);
@@ -302,7 +297,7 @@ class AgeDuringTransaction : public MLFunction {
         // Calculate year
         std::time_t time = static_cast<std::time_t>(tTimestamp);
         std::tm* time_info = std::localtime(&time);
-        int year = static_cast<int>(time_info->tm_year);
+        int year = 1900 + time_info->tm_year;
 
         results.push_back(year - birthYear);
     }
