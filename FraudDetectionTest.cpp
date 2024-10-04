@@ -738,7 +738,7 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
   exec::registerVectorFunction(
         "date_to_timestamp",
         DateToTimestamp::signatures(),
-        std::make_unique<DateToTimestamp>("%Y-%m-%dT%H:%M"));
+        std::make_unique<DateToTimestamp>("%Y-%m-%d %H:%M:%S"));
   std::cout << "Completed registering function for date_to_timestamp_2" << std::endl;
 
 
