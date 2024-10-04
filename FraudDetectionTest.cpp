@@ -1346,11 +1346,11 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                       
      std::string path = dataFile->path;
 
-     RowVectorPtr accountRowVector = getAccountData("resources/data/financial_account.csv");
+     RowVectorPtr accountRowVector = getAccountData("resources/data/500_mb/financial_account.csv");
      std::cout << "accountRowVector data generated" << std::endl;
-     RowVectorPtr transactionRowVector = getTransactionData("resources/data/financial_transactions.csv");
+     RowVectorPtr transactionRowVector = getTransactionData("resources/data/500_mb/financial_transactions.csv");
      std::cout << "transactionRowVector data generated" << std::endl;
-     RowVectorPtr customerRowVector = getCustomerData("resources/data/customer.csv");
+     RowVectorPtr customerRowVector = getCustomerData("resources/data/500_mb/customer.csv");
      std::cout << "customerRowVector data generated" << std::endl;
 
      int totalRowsAccount = accountRowVector->size();
