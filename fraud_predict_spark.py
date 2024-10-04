@@ -284,7 +284,7 @@ spark.udf.register("predict_dnn_udf", predict_dnn, IntegerType())
 
 
 # Load and register small xgboost model
-xgb_trans = load_xgboost_model("resources/model/fraud_xgboost_trans_no_f_5_32 .json")
+xgb_trans = load_xgboost_model("resources/model/fraud_xgboost_trans_no_f_5_32.json")
 
 def predict_xgb_trans(features):
     # Convert input features to DMatrix
