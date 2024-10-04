@@ -426,7 +426,7 @@ class GetCustomerFeatures : public MLFunction {
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
-    int secondsInADay = 86400;
+    //int secondsInADay = 86400;
     std::vector<std::vector<float>> results;
 
     BaseVector* base0 = args[0].get();
@@ -555,7 +555,7 @@ class DateToTimestamp : public MLFunction {
       // Convert tm struct to time_t (timestamp)
       time_t tt = mktime(&t);
       // Cast time_t to int64_t
-      int64_t timestamp = static_cast<int64_t>(tt);
+      int64_t timestamp = static_cast<int64_t>(tt) + 25200;
       results.push_back(timestamp);
 
     }
@@ -738,7 +738,7 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
   exec::registerVectorFunction(
         "date_to_timestamp",
         DateToTimestamp::signatures(),
-        std::make_unique<DateToTimestamp>("%Y-%m-%d %H:%M:%S"));
+        std::make_unique<DateToTimestamp>("%Y-%m-%dT%H:%M"));
   std::cout << "Completed registering function for date_to_timestamp_2" << std::endl;
 
 
