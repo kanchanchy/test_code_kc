@@ -370,8 +370,8 @@ class GetTransactionFeatures : public MLFunction {
         // Calculate day of week
         std::time_t time = static_cast<std::time_t>(tTimestamp);
         std::tm* time_info = std::localtime(&time);
-        float day = (static_cast<float>(time_info->tm_day))/31.0;
-        float month = (static_cast<float>(time_info->tm_month))/12.0;
+        float day = (static_cast<float>(time_info->tm_mday))/31.0;
+        float month = (static_cast<float>(time_info->tm_mon))/12.0;
         float year = (static_cast<float>(time_info->tm_year))/2011.0;
         float dayOfWeek = (static_cast<float>(time_info->tm_wday))/6.0;
 
@@ -1143,7 +1143,7 @@ RowVectorPtr FraudDetectionTest::getAccountData(std::string filePath) {
      auto faTransactionLimitVector = maker.flatVector<float>(faTransactionLimit);
      auto accountRowVector = maker.rowVector(
          {"fa_customer_sk", "fa_transaction_limit"},
-         {faCustomerSkVector, faTransactionLimit}
+         {faCustomerSkVector, faTransactionLimitVector}
      );
 
      return accountRowVector;
