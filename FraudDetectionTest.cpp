@@ -367,7 +367,7 @@ class GetTransactionFeatures : public MLFunction {
         std::tm* time_info = std::localtime(&time);
         float day = (static_cast<float>(time_info->tm_mday))/31.0;
         float month = (static_cast<float>(time_info->tm_mon))/12.0;
-        float year = (static_cast<float>(time_info->tm_year))/2011.0;
+        float year = (static_cast<float>(1900 + (time_info->tm_year)))/2011.0;
         float dayOfWeek = (static_cast<float>(time_info->tm_wday))/6.0;
 
         std::vector<float> vec;
@@ -1392,7 +1392,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"transaction_id", "t_sender", "t_amount", "date_to_timestamp(t_time) as t_timestamp"})
                          .filter("is_working_day(t_timestamp) = 1")
                          .project({"transaction_id", "t_sender", "t_timestamp", "get_transaction_features(t_amount, t_timestamp) as transaction_feature"})
-                         //.filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
+                         .filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
                          .hashJoin(
                              {"t_sender"},
                              {"c_customer_sk"},
@@ -1416,10 +1416,10 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              "",
                              {"transaction_id", "t_timestamp", "transaction_feature", "c_birth_year", "customer_feature"}
                          )
-                         //.filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
-                         .project({"transaction_id", "age_during_transaction(t_timestamp, c_birth_year) as age", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(concat(customer_feature, transaction_feature)))))))))) AS fraudulent_probs"})
+                         .filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
+                         .project({"transaction_id", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(concat(customer_feature, transaction_feature))))))))))) AS fraud_type"})
                          //.filter("get_binary_class(fraudulent_probs) = 1")
-                         .project({"transaction_id", "age", "get_binary_class(fraudulent_probs)"})
+                         //.project({"transaction_id", "get_binary_class(fraudulent_probs)"})
                          .planNode();
 
 
