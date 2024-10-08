@@ -36,7 +36,7 @@ cursor = connection.cursor()
 
 
 sql_connect_db = """
-CREATE DATABASE IF NOT EXISTS postgres_db WITH ENGINE = 'postgres', PARAMETERS = {
+CREATE DATABASE IF NOT EXISTS postgres_data WITH ENGINE = 'postgres', PARAMETERS = {
      "user": "postgres",
      "password": "postgres",
      "host": "localhost",
