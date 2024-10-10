@@ -36,7 +36,7 @@ cursor = connection.cursor()
 
 
 sql_connect_db = """
-CREATE DATABASE IF NOT EXISTS postgres_data WITH ENGINE = 'postgres', PARAMETERS = {
+CREATE DATABASE IF NOT EXISTS postgres_db WITH ENGINE = 'postgres', PARAMETERS = {
      "user": "postgres",
      "password": "postgres",
      "host": "localhost",
@@ -131,16 +131,17 @@ cursor.query(
 ).df()
 
 
-# In[ ]:
+# In[10]:
 
 
-join_query = f"SELECT transaction_id, DNN_FRAUD_DETECT_EVADB(c_current_addr_sk, c_preferred_cust_flag, c_birth_day, c_birth_month, c_birth_year, c_birth_country, transaction_limit, t_time, amount) FROM postgres_data.customer_full_data JOIN postgres_data.transaction_data ON c_customer_sk = sender_id WHERE IS_WORKING_DAY_EVADB(t_time).label = 1 AND IS_ADULT_DURING_TRANSACTION_EVADB(t_time, c_birth_year).label = 1 AND IS_FRAUD_XGB_TRANS_EVADB(t_time, amount).label = 1"
+join_query = f"SELECT transaction_id, DNN_FRAUD_DETECT_EVADB(c_current_addr_sk, c_preferred_cust_flag, c_birth_day, c_birth_month, c_birth_year, c_birth_country, transaction_limit, t_time, amount) FROM postgres_data.customer_full_data JOIN postgres_data.transaction_data ON c_customer_sk = sender_id WHERE IS_WORKING_DAY_EVADB(t_time).label = 1 AND IS_ADULT_DURING_TRANSACTION_EVADB(t_time, c_birth_year).label = 1 AND IS_FRAUD_XGB_TRANS_EVADB(t_time, amount).xgb_predict >= 0.5"
+#join_query = f"SELECT transaction_id, DNN_FRAUD_DETECT_EVADB(c_current_addr_sk, c_preferred_cust_flag, c_birth_day, c_birth_month, c_birth_year, c_birth_country, transaction_limit, t_time, amount) FROM postgres_data.customer_full_data JOIN postgres_data.transaction_data ON c_customer_sk = sender_id WHERE IS_WORKING_DAY_EVADB(t_time).label = 1 AND IS_ADULT_DURING_TRANSACTION_EVADB(t_time, c_birth_year).label = 1"
 joinDf = cursor.query(join_query).df()
 print(joinDf.head())
 print(joinDf.count())
 
 
-# In[ ]:
+# In[11]:
 
 
 tEnd = time.time()

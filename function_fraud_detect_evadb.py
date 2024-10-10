@@ -324,17 +324,19 @@ class IS_FRAUD_XGB_TRANS_EVADB(AbstractFunction):
     def name(self) -> str:
         return "IS_FRAUD_XGB_TRANS_EVADB"
 
-    @setup(cacheable=True, function_type="classification", batchable=True)
+    @setup(cacheable=True, function_type="regression", batchable=True)
     def setup(self):
+        self.xgb_model = xgb.Booster()
+        self.xgb_model.load_model("resources/model/fraud_xgboost_trans_no_f_5_32.json")
         #self.timer_process = utils.Timer()
         #self.timer_model_inference = utils.Timer()
         self.t_process = 0
         self.t_model_inference = 0
         self.count_inference = 0
 
-    @property
-    def labels(self):
-        return list([str(num) for num in range(2)])
+    #@property
+    #def labels(self):
+    #    return list([str(num) for num in range(2)])
 
     @forward(
         input_signatures=[
@@ -355,9 +357,9 @@ class IS_FRAUD_XGB_TRANS_EVADB(AbstractFunction):
         ],
         output_signatures=[
             PandasDataframe(
-                columns=["label"],
+                columns=["xgb_predict"],
                 column_types=[
-                    NdArrayType.INT32,
+                    NdArrayType.FLOAT32,
                 ],
                 column_shapes=[(None,)],
             )
@@ -370,11 +372,21 @@ class IS_FRAUD_XGB_TRANS_EVADB(AbstractFunction):
 
         #X_for_ffnn = self.min_max_scaler.transform(data[['popularity', 'vote_average', 'vote_count']].values)
         data['transaction_feature'] = data.apply(lambda row: get_transaction_features(row['t_time'], row['amount']), axis=1)
-        data['xgb_predict'] = data.apply(lambda row: predict_xgb_trans(row['transaction_feature']), axis=1)
-        data['label'] = np.where(data['xgb_predict'] >= 0.5, 1, 0)
-        data = data.drop(columns=['t_time', 'amount', 'transaction_feature', 'xgb_predict'])
-
-        return data
+        #data['xgb_predict'] = data.apply(lambda row: predict_xgb_trans(row['transaction_feature']), axis=1)
+        #data['label'] = np.where(data['xgb_predict'] >= 0.5, 1, 0)
+        #data = data.drop(columns=['t_time', 'amount', 'transaction_feature'])
+        #return data
+        X_data = np.array(data['transaction_feature'].tolist(), dtype=np.float32)
+        dmatrix = xgb.DMatrix(X_data)
+        preds = self.xgb_model.predict(dmatrix)
+        
+        result_df = pd.DataFrame(
+            {
+                "xgb_predict": preds,
+            }
+        )
+        return result_df
+        
 
 
 
