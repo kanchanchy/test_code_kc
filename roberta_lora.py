@@ -128,10 +128,15 @@ def prepare_data(args, tokenizer):
     return train_dataloader, eval_dataloader, num_labels
 
 
-def load_model(args, num_classes, device):
-    model = AutoModelForSequenceClassification.from_pretrained(
-        args.model_type, return_dict=True, num_labels=num_classes
-    )
+def load_model(args, num_classes, device, from_path=False):
+    if from_path:
+        lora_str = "_lora" if args.use_lora else ""
+        eps_str = f"_eps{args.epsilon}" if args.private_training else ""
+        model_name = f"{args.model_type}_{args.task}{lora_str}{eps_str}"
+        model = AutoModelForSequenceClassification.from_pretrained(f"models/{model_name}", return_dict=True, num_labels=num_classes)
+    else:
+        model = AutoModelForSequenceClassification.from_pretrained(args.model_type, return_dict=True, num_labels=num_classes)
+
     if args.use_lora:
         peft_config = LoraConfig(
             task_type="SEQ_CLS",
@@ -222,6 +227,8 @@ def run(args, model, train_dataloader, eval_dataloader, num_labels, device):
             model_name = f"{args.model_type}_{args.task}{lora_str}{eps_str}"
             model_to_save.save_pretrained(f"models/{model_name}")
         print(f"epoch {epoch}:", eval_metric)
+        with open("result.txt", 'a') as file:
+            file.write(f"epoch {epoch}: " + str(valid_acc_total)+ "\n")
 
     print(f"Best validation accuracy: {best_valid_acc}")
 
@@ -231,19 +238,26 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--private_training", action="store_true")
     parser.add_argument("--use_lora", action="store_true")
-    parser.add_argument("--percent", type=int, default=100)
-    parser.add_argument("--lr", type=float, default=3e-4)
-    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--percent", type=int, default=40)
+    parser.add_argument("--lr", type=float, default=1e-5)
+    parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--task", type=str, default="mnli")
     parser.add_argument("--model_type", type=str, default="roberta-base")
-    parser.add_argument("--epochs", type=int, default=20)
+    parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--max_grad_norm", type=float, default=0.1)
     parser.add_argument("--delta", type=float, default=1e-6)
-    parser.add_argument("--epsilon", type=float, default=8.0)
+    parser.add_argument("--epsilon", type=float, default=1.0)
     parser.add_argument("--gpu", type=int, default=0)
 
     args = parser.parse_args()
     print(args)
+
+    with_lora = "without lora"
+    if args.use_lora:
+        with_lora = "with lora"
+
+    with open("result.txt", 'a') as file:
+        file.write(f"\n\nData Percent: {args.percent}, Learning Rate: {args.lr}, {with_lora}\n....................................\n")
     
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -255,5 +269,5 @@ if __name__ == "__main__":
 
     tokenizer = get_tokenizer(args)
     train_loader, valid_loader, num_labels = prepare_data(args, tokenizer)
-    model = load_model(args, num_labels, device)
+    model = load_model(args, num_labels, device, from_path=True)
     run(args, model, train_loader, valid_loader, num_labels, device)
