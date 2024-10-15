@@ -1145,16 +1145,16 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
 
 
     auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                         .values(batchesStore)
-                         //.localPartition({"s_store"})
+                         .values({storeRowVector})
+                         .localPartition({"s_store"})
                          .project({"s_store", "s_features as store_feature"})
                          .filter("is_popular_store(store_feature) = 1")
                          .project({"s_store", "mat_vector_add_1(mat_mul_12(store_feature)) as dnn_part2"})
                          .hashJoin({"s_store"},
                              {"o_store"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values(batchesOrder)
-                             //.localPartition({"o_store"})
+                             .values({orderRowVector})
+                             .localPartition({"o_store"})
                              .filter("o_weekday != 'Sunday'")
                              .project({"o_order_id", "o_customer_sk", "o_store", "o_date", "o_weekday"})
                              //.project({"o_order_id", "o_store", "customer_id_embedding(convert_int_array(o_customer_sk)) as customer_id_feature", "get_order_features(o_date, o_weekday) AS order_feature"})
@@ -1173,7 +1173,7 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
 
 
     std::chrono::steady_clock::time_point begin2 = std::chrono::steady_clock::now();
-    auto results2 = exec::test::AssertQueryBuilder(myPlan2).maxDrivers(4).copyResults(pool_.get());
+    auto results2 = exec::test::AssertQueryBuilder(myPlan2).copyResults(pool_.get());
     std::chrono::steady_clock::time_point end2 = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
