@@ -1079,7 +1079,7 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
                          //.orderBy({fmt::format("{} ASC NULLS FIRST", "o_order_id")}, false)
                          .planNode();*/
 
-     auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+     /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({storeRowVector})
                          .localPartition({"s_store"})
                          .project({"s_store", "s_features as store_feature"})
@@ -1114,7 +1114,7 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
     std::cout << "Single Batch with DNN first Results Size: " << results->size() << std::endl;
     std::cout << results->toString(0, 5) << std::endl;
     std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0 << std::endl;*/
 
 
 
@@ -1141,6 +1141,34 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
                          .project({"o_order_id", "get_max_index(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(all_feature)))))))) AS predicted_trip_type"})
                          //.project({"o_order_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_feature))))))))) AS predicted_trip_type"})
                          //.orderBy({fmt::format("{} ASC NULLS FIRST", "o_order_id")}, false)
+                         .planNode();*/
+
+
+    auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({storeRowVector})
+                         .localPartition({"s_store"})
+                         .project({"s_store", "s_features as store_feature"})
+                         .filter("is_popular_store(store_feature) = 1")
+                         .project({"s_store", "mat_vector_add_1(mat_mul_12(store_feature)) as dnn_part2"})
+                         .hashJoin({"s_store"},
+                             {"o_store"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values({orderRowVector})
+                             .localPartition({"o_store"})
+                             .project({"o_order_id", "o_customer_sk", "o_store", "o_date", "o_weekday"})
+                             .filter("o_weekday != 'Sunday'")
+                             .project({"o_order_id", "o_store", "customer_id_embedding(convert_int_array(o_customer_sk)) as customer_id_feature", "get_order_features(o_date, o_weekday) AS order_feature"})
+                             .project({"o_order_id", "o_store", "mat_mul_11(concat(customer_id_feature, order_feature)) as dnn_part1"})
+                             .planNode(),
+                             "",
+                             {"o_order_id", "dnn_part1", "dnn_part2"}
+                         )
+                         .project({"o_order_id", "vector_addition(dnn_part1, dnn_part2) AS all_feature"})
+                         .project({"o_order_id", "get_max_index(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(all_feature)))))))) AS predicted_trip_type"})
+                         //.filter("o_weekday != 'Sunday'")
+                         //.filter("is_popular_store(store_feature) = 1")
+                         //.project({"o_order_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_feature))))))))) AS predicted_trip_type"})
+                         //.orderBy({fmt::format("{} ASC NULLS FIRST", "o_order_id")}, false)
                          .planNode();
 
 
@@ -1152,7 +1180,7 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
     std::cout << "Single Batch with DNN first Results Size: " << results2->size() << std::endl;
     std::cout << results2->toString(0, 5) << std::endl;
     std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
-    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end2 - begin2).count()) /1000000.0 << std::endl; */
+    std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end2 - begin2).count()) /1000000.0 << std::endl;
 
 
 
