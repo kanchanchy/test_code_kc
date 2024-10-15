@@ -1157,14 +1157,14 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
                              .localPartition({"o_store"})
                              .project({"o_order_id", "o_customer_sk", "o_store", "o_date", "o_weekday"})
                              .filter("o_weekday != 'Sunday'")
-                             .project({"o_order_id", "o_store", "customer_id_embedding(convert_int_array(o_customer_sk)) as customer_id_feature", "get_order_features(o_date, o_weekday) AS order_feature"})
-                             .project({"o_order_id", "o_store", "mat_mul_11(concat(customer_id_feature, order_feature)) as dnn_part1"})
+                             //.project({"o_order_id", "o_store", "customer_id_embedding(convert_int_array(o_customer_sk)) as customer_id_feature", "get_order_features(o_date, o_weekday) AS order_feature"})
+                             .project({"o_order_id", "o_store", "mat_mul_11(concat(customer_id_embedding(convert_int_array(o_customer_sk)), get_order_features(o_date, o_weekday))) as dnn_part1"})
                              .planNode(),
                              "",
                              {"o_order_id", "dnn_part1", "dnn_part2"}
                          )
-                         .project({"o_order_id", "vector_addition(dnn_part1, dnn_part2) AS all_feature"})
-                         .project({"o_order_id", "get_max_index(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(all_feature)))))))) AS predicted_trip_type"})
+                         //.project({"o_order_id", "vector_addition(dnn_part1, dnn_part2) AS all_feature"})
+                         .project({"o_order_id", "get_max_index(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(vector_addition(dnn_part1, dnn_part2))))))))) AS predicted_trip_type"})
                          //.filter("o_weekday != 'Sunday'")
                          //.filter("is_popular_store(store_feature) = 1")
                          //.project({"o_order_id", "softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(all_feature))))))))) AS predicted_trip_type"})
