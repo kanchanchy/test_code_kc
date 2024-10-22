@@ -1449,18 +1449,18 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              .values({transactionRowVector})
                              .localPartition({"t_sender"})
                              .project({"transaction_id", "t_sender", "t_amount", "date_to_timestamp(t_time) as t_timestamp"})
-                             .filter("is_working_day(t_timestamp) = 1")
+                             //.filter("is_working_day(t_timestamp) = 1")
                              .project({"transaction_id", "t_sender", "t_timestamp", "get_transaction_features(t_amount, t_timestamp) as transaction_feature"})
-                             //.filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
+                             .filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
                              .planNode(),
                              "",
                              {"transaction_id", "t_timestamp", "transaction_feature", "c_birth_year", "customer_feature"}
                          )
-                         //.filter("is_working_day(t_timestamp) = 1")
+                         .filter("is_working_day(t_timestamp) = 1")
                          //.filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
                          .project({"transaction_id", "t_timestamp", "c_birth_year", "transaction_feature", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(concat(customer_feature, transaction_feature))))))))))) AS fraud_type"})
                          .filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
-                         .filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
+                         //.filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
                          //.filter("is_working_day(t_timestamp) = 1")
                          //.filter("get_binary_class(fraudulent_probs) = 1")
                          //.project({"transaction_id", "get_binary_class(fraudulent_probs)"})
