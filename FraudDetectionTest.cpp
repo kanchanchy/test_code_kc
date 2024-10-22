@@ -1457,7 +1457,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              .project({"transaction_id", "t_sender", "t_timestamp", "mat_mul_12(transaction_feature) AS dnn_part12"})
                              .planNode(),
                              "",
-                             {"transaction_id", "t_timestamp", "dnn_part12", "c_birth_year", "dnn_part11"}
+                             {"c_birth_year", "dnn_part11", "transaction_id", "t_timestamp", "dnn_part12"}
                          )
                          .filter("is_working_day(t_timestamp) = 1")
                          //.filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
