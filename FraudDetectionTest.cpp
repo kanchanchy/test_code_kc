@@ -1389,7 +1389,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
 
-     auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+     /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values(batchesTransaction)
                          //.localPartition({"t_sender"})
                          .project({"transaction_id", "t_sender", "t_amount", "date_to_timestamp(t_time) as t_timestamp"})
@@ -1425,10 +1425,10 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"transaction_id", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(vector_addition(dnn_part11, dnn_part12))))))))) AS fraud_type"})
                          //.filter("get_binary_class(fraudulent_probs) = 1")
                          //.project({"transaction_id", "get_binary_class(fraudulent_probs)"})
-                         .planNode();
+                         .planNode();*/
 
 
-     /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+     auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                         .values(batchesCustomer)
                         //.localPartition({"c_customer_sk"})
                         .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country"})
@@ -1443,7 +1443,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              "",
                              {"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country", "fa_transaction_limit"}
                         )
-                        .project({"c_customer_sk", "c_birth_year", "get_customer_features(c_address_num, c_cust_flag, c_birth_day, c_birth_month, c_birth_year, c_birth_country, fa_transaction_limit) as customer_feature"})
+                        .project({"c_customer_sk", "c_birth_year", "mat_vector_add_1(mat_mul_11(get_customer_features(c_address_num, c_cust_flag, c_birth_day, c_birth_month, c_birth_year, c_birth_country, fa_transaction_limit))) as dnn_part11"})
                          .hashJoin(
                              {"c_customer_sk"},
                              {"t_sender"},
@@ -1454,19 +1454,21 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              //.filter("is_working_day(t_timestamp) = 1")
                              .project({"transaction_id", "t_sender", "t_timestamp", "get_transaction_features(t_amount, t_timestamp) as transaction_feature"})
                              .filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
+                             .project({"transaction_id", "t_sender", "t_timestamp", "mat_mul_12(transaction_feature) AS dnn_part12"})
                              .planNode(),
                              "",
                              {"transaction_id", "t_timestamp", "transaction_feature", "c_birth_year", "customer_feature"}
                          )
                          .filter("is_working_day(t_timestamp) = 1")
                          //.filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
-                         .project({"transaction_id", "t_timestamp", "c_birth_year", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(concat(customer_feature, transaction_feature))))))))))) AS fraud_type"})
+                         //.project({"transaction_id", "t_timestamp", "c_birth_year", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(concat(customer_feature, transaction_feature))))))))))) AS fraud_type"})
+                         .project({"transaction_id", "t_timestamp", "c_birth_year", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(vector_addition(dnn_part11, dnn_part12))))))))) AS fraud_type"})
                          .filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
                          //.filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
                          //.filter("is_working_day(t_timestamp) = 1")
                          //.filter("get_binary_class(fraudulent_probs) = 1")
                          //.project({"transaction_id", "get_binary_class(fraudulent_probs)"})
-                         .planNode();*/
+                         .planNode();
 
 
 
