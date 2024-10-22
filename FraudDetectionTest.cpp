@@ -1359,7 +1359,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      std::cout << "account data size: " << totalRowsAccount << ",  transaction data size: " << totalRowsTransaction << ",  customer data size: " << totalRowsCustomer << std::endl;
 
-     int batch_counts = 12;
+     int batch_counts = 16;
      int batchSizeAccount = totalRowsAccount / batch_counts;
      int batchSizeTransaction = totalRowsTransaction / batch_counts;
      int batchSizeCustomer = totalRowsCustomer / batch_counts;
@@ -1428,14 +1428,14 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                         .values(batchesCustomer)
-                        .localPartition({"c_customer_sk"})
+                        //.localPartition({"c_customer_sk"})
                         .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country"})
                         .hashJoin(
                              {"c_customer_sk"},
                              {"fa_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values(batchesAccount)
-                             .localPartition({"fa_customer_sk"})
+                             //.localPartition({"fa_customer_sk"})
                              .project({"fa_customer_sk", "fa_transaction_limit"})
                              .planNode(),
                              "",
@@ -1447,7 +1447,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"t_sender"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values(batchesTransaction)
-                             .localPartition({"t_sender"})
+                             //.localPartition({"t_sender"})
                              .project({"transaction_id", "t_sender", "t_amount", "date_to_timestamp(t_time) as t_timestamp"})
                              //.filter("is_working_day(t_timestamp) = 1")
                              .project({"transaction_id", "t_sender", "t_timestamp", "get_transaction_features(t_amount, t_timestamp) as transaction_feature"})
@@ -1506,7 +1506,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    auto results = exec::test::AssertQueryBuilder(myPlan1).maxDrivers(4).copyResults(pool_.get());
+    auto results = exec::test::AssertQueryBuilder(myPlan1).maxDrivers(8).copyResults(pool_.get());
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
