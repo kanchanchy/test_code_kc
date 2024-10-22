@@ -1359,7 +1359,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      std::cout << "account data size: " << totalRowsAccount << ",  transaction data size: " << totalRowsTransaction << ",  customer data size: " << totalRowsCustomer << std::endl;
 
-     int batch_counts = 8;
+     int batch_counts = 12;
      int batchSizeAccount = totalRowsAccount / batch_counts;
      int batchSizeTransaction = totalRowsTransaction / batch_counts;
      int batchSizeCustomer = totalRowsCustomer / batch_counts;
@@ -1506,7 +1506,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    auto results = exec::test::AssertQueryBuilder(myPlan1).maxDrivers(8).copyResults(pool_.get());
+    auto results = exec::test::AssertQueryBuilder(myPlan1).maxDrivers(4).copyResults(pool_.get());
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
