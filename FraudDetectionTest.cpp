@@ -1427,14 +1427,14 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
      auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                        .values({customerRowVector})
+                        .values(batchesCustomer)
                         .localPartition({"c_customer_sk"})
                         .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country"})
                         .hashJoin(
                              {"c_customer_sk"},
                              {"fa_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values({accountRowVector})
+                             .values(batchesAccount)
                              .localPartition({"fa_customer_sk"})
                              .project({"fa_customer_sk", "fa_transaction_limit"})
                              .planNode(),
@@ -1446,7 +1446,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"c_customer_sk"},
                              {"t_sender"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values({transactionRowVector})
+                             .values(batchesTransaction)
                              .localPartition({"t_sender"})
                              .project({"transaction_id", "t_sender", "t_amount", "date_to_timestamp(t_time) as t_timestamp"})
                              //.filter("is_working_day(t_timestamp) = 1")
@@ -1457,9 +1457,9 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"transaction_id", "t_timestamp", "transaction_feature", "c_birth_year", "customer_feature"}
                          )
                          .filter("is_working_day(t_timestamp) = 1")
-                         .filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
-                         .project({"transaction_id", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(concat(customer_feature, transaction_feature))))))))))) AS fraud_type"})
                          //.filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
+                         .project({"transaction_id", "t_timestamp", "c_birth_year", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(concat(customer_feature, transaction_feature))))))))))) AS fraud_type"})
+                         .filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
                          //.filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
                          //.filter("is_working_day(t_timestamp) = 1")
                          //.filter("get_binary_class(fraudulent_probs) = 1")
@@ -1506,7 +1506,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    auto results = exec::test::AssertQueryBuilder(myPlan1).copyResults(pool_.get());
+    auto results = exec::test::AssertQueryBuilder(myPlan1).maxDrivers(8).copyResults(pool_.get());
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
