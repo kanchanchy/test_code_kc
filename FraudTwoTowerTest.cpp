@@ -118,6 +118,86 @@ private:
 
 
 
+class VectorAddition : public MLFunction {
+ public:
+  VectorAddition(int inputDims) {
+    inputDims_ = inputDims;
+  }
+
+  void apply(
+      const SelectivityVector& rows,
+      std::vector<VectorPtr>& args,
+      const TypePtr& type,
+      exec::EvalCtx& context,
+      VectorPtr& output) const override {
+    BaseVector::ensureWritable(rows, type, context.pool(), output);
+
+    BaseVector* left = args[0].get();
+    BaseVector* right = args[1].get();
+
+    exec::LocalDecodedVector leftHolder(context, *left, rows);
+    auto decodedLeftArray = leftHolder.get();
+    auto baseLeftArray =
+        decodedLeftArray->base()->as<ArrayVector>()->elements();
+
+    exec::LocalDecodedVector rightHolder(context, *right, rows);
+    auto decodedRightArray = rightHolder.get();
+    auto baseRightArray = rightHolder->base()->as<ArrayVector>()->elements();
+
+    float* input1Values = baseLeftArray->values()->asMutable<float>();
+    float* input2Values = baseRightArray->values()->asMutable<float>();
+
+    int numInput = rows.size();
+
+    Eigen::Map<
+        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+        input1Matrix(input1Values, numInput, inputDims_);
+    Eigen::Map<
+        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+        input2Matrix(input2Values, numInput, inputDims_);
+
+    std::vector<std::vector<float>> results;
+
+    for (int i = 0; i < numInput; i++) {
+      //Eigen::Matrix<float, 1, Eigen::Dynamic, Eigen::RowMajor> vSum = input1Matrix.row(i) + input2Matrix.row(i);
+      Eigen::VectorXf vSum = input1Matrix.row(i) + input2Matrix.row(i);
+      std::vector<float> curVec(vSum.data(), vSum.data() + vSum.size());
+      //std::vector<float> std_vector(vSum.data(), vSum.data() + vSum.size());
+      results.push_back(curVec);
+    }
+
+    VectorMaker maker{context.pool()};
+    output = maker.arrayVector<float>(results, REAL());
+  }
+
+  static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
+    return {exec::FunctionSignatureBuilder()
+                .argumentType("array(REAL)")
+                .argumentType("array(REAL)")
+                .returnType("array(REAL)")
+                .build()};
+  }
+
+  static std::string getName() {
+    return "vector_addition";
+  };
+
+  float* getTensor() const override {
+    // TODO: need to implement
+    return nullptr;
+  }
+
+  CostEstimate getCost(std::vector<int> inputDims) {
+    // TODO: need to implement
+    return CostEstimate(0, inputDims[0], inputDims[1]);
+  }
+
+ private:
+  int inputDims_;
+};
+
+
+
 class GetAge : public MLFunction {
  public:
 
@@ -392,6 +472,11 @@ void FraudTwoTowerTest::registerFunctions() {
       "cosine_similarity",
       CosineSimilarity::signatures(),
       std::make_unique<CosineSimilarity>(16));
+
+  exec::registerVectorFunction(
+          "vector_addition",
+          VectorAddition::signatures(),
+          std::make_unique<VectorAddition>(16));
 
 }
 
@@ -1371,8 +1456,8 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
                              myPlanProduct,
                              {"c_customer_sk", "customer_encoding", "p_product_id", "product_encoding"}
                       )
-                      //.project({"c_customer_sk", "p_product_id", "cosine_similarity(customer_encoding, product_encoding) as similarity"})
-                      .project({"c_customer_sk", "p_product_id", "customer_encoding", "product_encoding"})
+                      .project({"c_customer_sk", "p_product_id", "vector_addition(customer_encoding, product_encoding) as final_encoding"})
+                      //.project({"c_customer_sk", "p_product_id", "customer_encoding", "product_encoding"})
                       .planNode();
 
 
