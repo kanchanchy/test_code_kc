@@ -1371,7 +1371,8 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
                              myPlanProduct,
                              {"c_customer_sk", "customer_encoding", "p_product_id", "product_encoding"}
                       )
-                      .project({"c_customer_sk", "p_product_id", "cosine_similarity(customer_encoding, product_encoding) as similarity"})
+                      //.project({"c_customer_sk", "p_product_id", "cosine_similarity(customer_encoding, product_encoding) as similarity"})
+                      .project({"c_customer_sk", "p_product_id", "customer_encoding", "product_encoding"})
                       .planNode();
 
 
