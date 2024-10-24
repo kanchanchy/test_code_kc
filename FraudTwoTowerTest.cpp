@@ -777,7 +777,7 @@ RowVectorPtr FraudTwoTowerTest::writeDataToFile(std::string csvFilePath, int num
 }
 
 
-std::unordered_map<std::string, int> FraudDetectionTest::getCountryMap() {
+std::unordered_map<std::string, int> FraudTwoTowerTest::getCountryMap() {
     std::unordered_map<std::string, int> countryMap;
 
     // Open the txt file
@@ -815,7 +815,7 @@ std::unordered_map<std::string, int> FraudDetectionTest::getCountryMap() {
 }
 
 
-std::unordered_map<std::string, int> FraudDetectionTest::getDepartmentMap() {
+std::unordered_map<std::string, int> FraudTwoTowerTest::getDepartmentMap() {
     std::unordered_map<std::string, int> deptMap;
 
     // Open the txt file
@@ -834,7 +834,7 @@ std::unordered_map<std::string, int> FraudDetectionTest::getDepartmentMap() {
         std::string value_str;
 
         // Get the key before the comma
-        std::getline(ss, key, ",,,");
+        std::getline(ss, key, "=");
 
         // Get the value after the comma
         std::getline(ss, value_str);
@@ -911,7 +911,7 @@ std::vector<std::vector<float>> FraudTwoTowerTest::loadHDF5Array(const std::stri
 }
 
 
-RowVectorPtr FraudDetectionTest::getCustomerData(std::string filePath) {
+RowVectorPtr FraudTwoTowerTest::getCustomerData(std::string filePath) {
 
     std::ifstream file(filePath.c_str());
 
@@ -1126,7 +1126,6 @@ RowVectorPtr FraudTwoTowerTest::getRatingData(std::string filePath) {
         std::string numberStr;
 
 	    int colIndex = 0;
-	    std::vector<float> features;
 
         while (std::getline(iss, numberStr, ',')) { // Read each number separated by comma
             /*if (index < 5) {
@@ -1149,7 +1148,6 @@ RowVectorPtr FraudTwoTowerTest::getRatingData(std::string filePath) {
 	        colIndex ++;
 
         }
-        sFeatures.push_back(features);
 
     }
 
@@ -1186,7 +1184,7 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
      int totalRowsProduct = productRowVector->size();
      int totalRowsRating = ratingRowVector->size();
 
-     std::cout << "order data size: " << totalRowsOrder << ",  store data size: " << totalRowsStore << std::endl;
+     std::cout << "customer data size: " << totalRowsCustomer << ",  product data size: " << totalRowsProduct << ",  rating data size: " << totalRowsRating << std::endl;
 
      int batch_counts = 4;
      int batchSizeCustomer = totalRowsCustomer / batch_counts;
