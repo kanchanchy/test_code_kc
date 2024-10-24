@@ -58,6 +58,7 @@ str_cols = df_customer.select_dtypes(include=['object']).columns.tolist()  # Get
 for c in str_cols:
     df_customer[c] = df_customer[c].apply(remove_quotes)
 
+df_customer = df_customer.dropna(subset=['c_birth_year', 'c_birth_country'])
 df_customer['c_customer_sk'] = df_customer['c_customer_sk'].astype('Int32')  # Using 'Int64' for nullable integers
 df_customer['c_current_addr_sk'] = df_customer['c_current_addr_sk'].astype('Int32')
 df_customer['c_birth_day'] = df_customer['c_birth_day'].astype('Int32')
