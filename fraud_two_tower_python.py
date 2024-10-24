@@ -157,7 +157,10 @@ def age_during_transaction(timestamp, birth_year):
     return year - birth_year
 
 def get_age(birth_year):
-    return 2024 - birth_year
+    age = 2024 - birth_year
+    if age < 0 or age > 94:
+        age = 0
+    return age
 
 
 # In[10]:
