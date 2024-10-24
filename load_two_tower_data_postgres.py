@@ -17,8 +17,11 @@ import connectorx as cx
 countryDict = {}
 with open('resources/data/country_mapping.txt', 'r') as file:
     for line in file:
-        key, value = line.strip().split(",")
-        countryDict[key] = int(value)
+        key, valueStr = line.strip().split(",")
+        value = int(valueStr)
+        if value < 0:
+            value = 212
+        countryDict[key] = value
 
 deptDict = {}
 with open('resources/data/department_mapping.txt', 'r') as file:
