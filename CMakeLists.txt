@@ -224,7 +224,7 @@ target_link_libraries(
   ${HDF5_CXX_LIBRARIES}
 )
 
-add_executable(fraud_detection_test tests/FraudTwoTowerTest.cpp)
+add_executable(fraud_two_tower_test tests/FraudTwoTowerTest.cpp)
 target_link_libraries(
   fraud_two_tower_test
   velox_aggregates
