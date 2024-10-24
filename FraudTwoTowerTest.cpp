@@ -834,7 +834,7 @@ std::unordered_map<std::string, int> FraudTwoTowerTest::getDepartmentMap() {
         std::string value_str;
 
         // Get the key before the comma
-        std::getline(ss, key, "=");
+        std::getline(ss, key, '=');
 
         // Get the value after the comma
         std::getline(ss, value_str);
