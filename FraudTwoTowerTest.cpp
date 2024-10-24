@@ -46,6 +46,7 @@
 #include "velox/ml_functions/tests/MLTestUtility.h"
 #include "velox/ml_functions/functions.h"
 //#include "velox/ml_functions/Concat.h"
+#include "velox/ml_functions/CosineSimilarity.h"
 #include "velox/ml_functions/Embedding.h"
 #include "velox/ml_functions/NNBuilder.h"
 #include <fstream>
