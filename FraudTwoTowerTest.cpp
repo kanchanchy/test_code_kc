@@ -214,7 +214,7 @@ class GetCustomerExtraFeature : public MLFunction {
 
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
     return {exec::FunctionSignatureBuilder()
-                .argumentType("INT")
+                .argumentType("INTEGER")
                 .argumentType("REAL")
                 .returnType("ARRAY(REAL)")
                 .build()};
