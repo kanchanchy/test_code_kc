@@ -170,6 +170,7 @@ column_names = dfCustomer.columns
 trimmed_columns = [trim(col(c)).alias(c) for c in column_names]
 dfCustomer = dfCustomer.select(*trimmed_columns)
 
+dfCustomer = dfCustomer.dropna(subset=['c_birth_year', 'c_birth_country'])
 dfCustomer = dfCustomer.withColumn("c_customer_sk", col("c_customer_sk").cast(IntegerType())).withColumn("c_current_addr_sk", col("c_current_addr_sk").cast(IntegerType())).withColumn("c_birth_day", col("c_birth_day").cast(IntegerType())).withColumn("c_birth_month", col("c_birth_month").cast(IntegerType())).withColumn("c_birth_year", col("c_birth_year").cast(IntegerType()))
 dfCustomer = dfCustomer.withColumn("c_preferred_cust_flag", when(col("c_preferred_cust_flag") == 'N', 0).otherwise(1))
 dfCustomer = dfCustomer.withColumn("c_birth_country", map_country_udf(col("c_birth_country")))
@@ -216,7 +217,10 @@ dfRating.cache()
 
 
 def get_age(birth_year):
-    return 2024 - birth_year
+    age = 2024 - birth_year
+    if age < 0 or age > 94:
+        age = 0
+    return age
 
 # Register the UDF
 #get_age_udf = udf(get_age, IntegerType())
