@@ -1544,7 +1544,25 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
                          //.project({"p_product_id", "concat(embedding_product(convert_int_array(p_product_id)), embedding_dept(convert_int_array(p_dept)), get_product_rating(CAST(avg_product_rating AS REAL))) as product_feature"})
                          //.project({"p_product_id", "relu(batch_norm3_product(mat_vector_add_3_product(mat_mul_3_product(relu(batch_norm2_product(mat_vector_add_2_product(mat_mul_2_product(relu(batch_norm1_product(mat_vector_add_1_product(mat_mul_1_product(product_feature)))))))))))) AS product_encoding"})
                          .nestedLoopJoin(
-                             myPlanCustomer2,
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({ratingRowVector})
+                         .localPartition({"r_user_id"})
+                         .project({"r_user_id", "r_rating"})
+                         .singleAggregation({"r_user_id"}, {"avg(r_rating) as avg_customer_rating"})
+                         //.filter("avg_customer_rating >= 4.0")
+                         .hashJoin({"r_user_id"},
+                             {"c_customer_sk"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values({customerRowVector})
+                             .localPartition({"c_customer_sk"})
+                             .project({"c_customer_sk", "c_address_num", "get_age(c_birth_year) as age", "c_birth_country", "c_cust_flag"})
+                             .planNode(),
+                             "",
+                             {"c_customer_sk", "c_address_num", "age", "c_birth_country", "c_cust_flag", "avg_customer_rating"}
+                         )
+                         //.project({"c_customer_sk", "concat(embedding_customer(convert_int_array(c_customer_sk)), embedding_addr(convert_int_array(c_address_num)), embedding_age(convert_int_array(age)), embedding_country(convert_int_array(c_birth_country)), get_customer_extra_feature(c_cust_flag, CAST(avg_customer_rating AS REAL))) as customer_feature"})
+                         //.project({"c_customer_sk", "relu(batch_norm3_customer(mat_vector_add_3_customer(mat_mul_3_customer(relu(batch_norm2_customer(mat_vector_add_2_customer(mat_mul_2_customer(relu(batch_norm1_customer(mat_vector_add_1_customer(mat_mul_1_customer(customer_feature)))))))))))) AS customer_encoding"})
+                         .planNode(),
                              {"p_product_id", "p_dept", "avg_product_rating", "c_customer_sk", "c_address_num", "age", "c_birth_country", "c_cust_flag", "avg_customer_rating"}
                          )
                          .project({"p_product_id", "c_customer_sk", "avg_customer_rating", "concat(embedding_customer(convert_int_array(c_customer_sk)), embedding_addr(convert_int_array(c_address_num)), embedding_age(convert_int_array(age)), embedding_country(convert_int_array(c_birth_country)), get_customer_extra_feature(c_cust_flag, CAST(avg_customer_rating AS REAL))) as customer_feature", "concat(embedding_product(convert_int_array(p_product_id)), embedding_dept(convert_int_array(p_dept)), get_product_rating(CAST(avg_product_rating AS REAL))) as product_feature"})
