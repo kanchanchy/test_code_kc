@@ -1415,7 +1415,7 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
                          .planNode();*/
 
 
-    auto myPlanProduct = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+    /*auto myPlanProduct = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({productRowVector})
                          .localPartition({"p_product_id"})
                          .project({"p_product_id", "p_dept"})
@@ -1458,11 +1458,57 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
                       )
                       .project({"c_customer_sk", "p_product_id", "vector_addition(customer_encoding, product_encoding) as final_encoding"})
                       //.project({"c_customer_sk", "p_product_id", "customer_encoding", "product_encoding"})
+                      .planNode();*/
+
+
+    auto myPlanProduct1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                         .values({ratingRowVector})
+                         .localPartition({"r_product_id"})
+                         .project({"r_product_id", "r_rating"})
+                         .singleAggregation({"r_product_id"}, {"avg(r_rating) as avg_product_rating"})
+                         .hashJoin({"r_product_id"},
+                             {"p_product_id"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values({productRowVector})
+                             .localPartition({"p_product_id"})
+                             .project({"p_product_id", "p_dept"})
+                             .planNode(),
+                             "",
+                             {"p_product_id", "p_dept", "avg_product_rating"}
+                         )
+                         .project({"p_product_id", "concat(embedding_product(convert_int_array(p_product_id)), embedding_dept(convert_int_array(p_dept)), get_product_rating(CAST(avg_product_rating AS REAL))) as product_feature"})
+                         .project({"p_product_id", "relu(batch_norm3_product(mat_vector_add_3_product(mat_mul_3_product(relu(batch_norm2_product(mat_vector_add_2_product(mat_mul_2_product(relu(batch_norm1_product(mat_vector_add_1_product(mat_mul_1_product(product_feature)))))))))))) AS product_encoding"})
+                         .planNode();
+
+    auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                      .values({ratingRowVector})
+                      .localPartition({"r_user_id"})
+                      .project({"r_user_id", "r_rating"})
+                      .singleAggregation({"r_user_id"}, {"avg(r_rating) as avg_customer_rating"})
+                      .filter("avg_customer_rating >= 4.0")
+                      .hashJoin({"r_user_id"},
+                             {"c_customer_sk"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values({customerRowVector})
+                             .localPartition({"c_customer_sk"})
+                             .project({"c_customer_sk", "c_address_num", "get_age(c_birth_year) as age", "c_birth_country", "c_cust_flag"})
+                             .planNode(),
+                             "",
+                             {"c_customer_sk", "c_address_num", "age", "c_birth_country", "c_cust_flag", "avg_customer_rating"}
+                      )
+                      .project({"c_customer_sk", "concat(embedding_customer(convert_int_array(c_customer_sk)), embedding_addr(convert_int_array(c_address_num)), embedding_age(convert_int_array(age)), embedding_country(convert_int_array(c_birth_country)), get_customer_extra_feature(c_cust_flag, CAST(avg_customer_rating AS REAL))) as customer_feature"})
+                      .project({"c_customer_sk", "relu(batch_norm3_customer(mat_vector_add_3_customer(mat_mul_3_customer(relu(batch_norm2_customer(mat_vector_add_2_customer(mat_mul_2_customer(relu(batch_norm1_customer(mat_vector_add_1_customer(mat_mul_1_customer(customer_feature)))))))))))) AS customer_encoding"})
+                      .nestedLoopJoin(
+                             myPlanProduct1,
+                             {"c_customer_sk", "customer_encoding", "p_product_id", "product_encoding"}
+                      )
+                      .project({"c_customer_sk", "p_product_id", "vector_addition(customer_encoding, product_encoding) as final_encoding"})
+                      //.project({"c_customer_sk", "p_product_id", "customer_encoding", "product_encoding"})
                       .planNode();
 
 
     std::chrono::steady_clock::time_point begin2 = std::chrono::steady_clock::now();
-    auto results2 = exec::test::AssertQueryBuilder(myPlan).copyResults(pool_.get());
+    auto results2 = exec::test::AssertQueryBuilder(myPlan1).copyResults(pool_.get());
     std::chrono::steady_clock::time_point end2 = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
