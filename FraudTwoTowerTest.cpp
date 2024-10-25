@@ -1415,7 +1415,7 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
                          .planNode();*/
 
 
-    /*auto myPlanProduct = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+    auto myPlanProduct = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({productRowVector})
                          .localPartition({"p_product_id"})
                          .project({"p_product_id", "p_dept"})
@@ -1458,10 +1458,10 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
                       )
                       .project({"c_customer_sk", "p_product_id", "vector_addition(customer_encoding, product_encoding) as final_encoding"})
                       //.project({"c_customer_sk", "p_product_id", "customer_encoding", "product_encoding"})
-                      .planNode();*/
+                      .planNode();
 
 
-    auto myPlanProduct1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+    /*auto myPlanProduct1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({ratingRowVector})
                          .localPartition({"r_product_id"})
                          .project({"r_product_id", "r_rating"})
@@ -1504,11 +1504,11 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
                       )
                       .project({"c_customer_sk", "p_product_id", "vector_addition(customer_encoding, product_encoding) as final_encoding"})
                       //.project({"c_customer_sk", "p_product_id", "customer_encoding", "product_encoding"})
-                      .planNode();
+                      .planNode();*/
 
 
     std::chrono::steady_clock::time_point begin2 = std::chrono::steady_clock::now();
-    auto results2 = exec::test::AssertQueryBuilder(myPlan1).copyResults(pool_.get());
+    auto results2 = exec::test::AssertQueryBuilder(myPlan).copyResults(pool_.get());
     std::chrono::steady_clock::time_point end2 = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
