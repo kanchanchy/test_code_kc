@@ -1415,7 +1415,7 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
                          .planNode();*/
 
 
-    /*auto myPlanProduct = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+    auto myPlanProduct = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({productRowVector})
                          .localPartition({"p_product_id"})
                          .project({"p_product_id", "p_dept"})
@@ -1445,20 +1445,21 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
                              .localPartition({"r_user_id"})
                              .project({"r_user_id", "r_rating"})
                              .singleAggregation({"r_user_id"}, {"avg(r_rating) as avg_customer_rating"})
-                             .filter("avg_customer_rating >= 4.0")
+                             //.filter("avg_customer_rating >= 4.0")
                              .planNode(),
                              "",
                              {"c_customer_sk", "c_address_num", "age", "c_birth_country", "c_cust_flag", "avg_customer_rating"}
                       )
-                      .project({"c_customer_sk", "concat(embedding_customer(convert_int_array(c_customer_sk)), embedding_addr(convert_int_array(c_address_num)), embedding_age(convert_int_array(age)), embedding_country(convert_int_array(c_birth_country)), get_customer_extra_feature(c_cust_flag, CAST(avg_customer_rating AS REAL))) as customer_feature"})
-                      .project({"c_customer_sk", "relu(batch_norm3_customer(mat_vector_add_3_customer(mat_mul_3_customer(relu(batch_norm2_customer(mat_vector_add_2_customer(mat_mul_2_customer(relu(batch_norm1_customer(mat_vector_add_1_customer(mat_mul_1_customer(customer_feature)))))))))))) AS customer_encoding"})
+                      .project({"c_customer_sk", "avg_customer_rating", "concat(embedding_customer(convert_int_array(c_customer_sk)), embedding_addr(convert_int_array(c_address_num)), embedding_age(convert_int_array(age)), embedding_country(convert_int_array(c_birth_country)), get_customer_extra_feature(c_cust_flag, CAST(avg_customer_rating AS REAL))) as customer_feature"})
+                      .project({"c_customer_sk", "avg_customer_rating", "relu(batch_norm3_customer(mat_vector_add_3_customer(mat_mul_3_customer(relu(batch_norm2_customer(mat_vector_add_2_customer(mat_mul_2_customer(relu(batch_norm1_customer(mat_vector_add_1_customer(mat_mul_1_customer(customer_feature)))))))))))) AS customer_encoding"})
                       .nestedLoopJoin(
                              myPlanProduct,
-                             {"c_customer_sk", "customer_encoding", "p_product_id", "product_encoding"}
+                             {"c_customer_sk", "avg_customer_rating", "customer_encoding", "p_product_id", "product_encoding"}
                       )
-                      .project({"c_customer_sk", "p_product_id", "vector_addition(customer_encoding, product_encoding) as final_encoding"})
+                      .project({"c_customer_sk", "p_product_id", "avg_customer_rating", "vector_addition(customer_encoding, product_encoding) as final_encoding"})
+                      .filter("avg_customer_rating >= 4.0")
                       //.project({"c_customer_sk", "p_product_id", "customer_encoding", "product_encoding"})
-                      .planNode();*/
+                      .planNode();
 
 
     /*auto myPlanProduct1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
@@ -1506,7 +1507,7 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
                       //.project({"c_customer_sk", "p_product_id", "customer_encoding", "product_encoding"})
                       .planNode();*/
 
-    auto myPlanCustomer2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+    /*auto myPlanCustomer2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({ratingRowVector})
                          .localPartition({"r_user_id"})
                          .project({"r_user_id", "r_rating"})
@@ -1571,11 +1572,11 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
                          //.project({"p_product_id", "c_customer_sk", "avg_customer_rating", "customer_encoding", "relu(batch_norm3_product(mat_vector_add_3_product(mat_mul_3_product(relu(batch_norm2_product(mat_vector_add_2_product(mat_mul_2_product(relu(batch_norm1_product(mat_vector_add_1_product(mat_mul_1_product(product_feature)))))))))))) AS product_encoding"})
                          .project({"p_product_id", "c_customer_sk", "avg_customer_rating", "vector_addition(relu(batch_norm3_customer(mat_vector_add_3_customer(mat_mul_3_customer(relu(batch_norm2_customer(mat_vector_add_2_customer(mat_mul_2_customer(relu(batch_norm1_customer(mat_vector_add_1_customer(mat_mul_1_customer(customer_feature)))))))))))), relu(batch_norm3_product(mat_vector_add_3_product(mat_mul_3_product(relu(batch_norm2_product(mat_vector_add_2_product(mat_mul_2_product(relu(batch_norm1_product(mat_vector_add_1_product(mat_mul_1_product(product_feature))))))))))))) as final_encoding"})
                          .filter("avg_customer_rating >= 4.0")
-                         .planNode();
+                         .planNode();*/
 
 
     std::chrono::steady_clock::time_point begin2 = std::chrono::steady_clock::now();
-    auto results2 = exec::test::AssertQueryBuilder(myPlan2).copyResults(pool_.get());
+    auto results2 = exec::test::AssertQueryBuilder(myPlan).copyResults(pool_.get());
     std::chrono::steady_clock::time_point end2 = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
