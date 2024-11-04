@@ -771,6 +771,20 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
           std::make_unique<ForestPrediction>(xgboost_fraud_transaction_path, 5, true));
     std::cout << "Completed registering function for xgboost_fraud_transaction" << std::endl;
 
+  std::cout << "To register function for VeloxTreePrediction" << std::endl;
+
+  exec::registerVectorFunction(
+      "velox_decision_tree_predict",
+      VeloxTreePrediction::signatures(),
+      std::make_unique<VeloxTreePrediction>(5));
+
+  std::cout << "To register function for VeloxTreeConstruction" << std::endl;
+
+  exec::registerVectorFunction(
+       "velox_decision_tree_construct",
+       VeloxTreeConstruction::signatures(),
+       std::make_unique<VeloxTreeConstruction>());
+
 }
 
 
@@ -1341,6 +1355,31 @@ RowVectorPtr FraudDetectionTest::getCustomerData(std::string filePath) {
 
 
 void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string orderFilePath, std::string modelFilePath) {
+
+     std::vector<std::string> pathVectors;
+
+  string forestFolderPath = "resources/model/fraud_xgboost_trans_5_32";
+
+  Forest::vectorizeForestFolder(forestFolderPath, pathVectors);
+
+  int numTrees = pathVectors.size();
+
+  auto treeModels = makeFlatVector<StringView> (pathVectors.size());
+
+  for (int i = 0; i < numTrees; i++) {
+
+      treeModels->set(i, StringView(pathVectors[i].c_str()));
+
+  }
+
+
+  auto treeIndexVector = maker.flatVector<int16_t>(numTrees);
+
+   for (int i = 0; i < numTrees; i++) {
+
+     treeIndexVector->set(i, i);
+
+  }
 
      auto dataFile = TempFilePath::create();
                       
