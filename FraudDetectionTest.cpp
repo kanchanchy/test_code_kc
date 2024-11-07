@@ -1380,16 +1380,17 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      treeIndexVector->set(i, i);
 
   }
+  auto treeRowVector = maker.rowVector({"tree_id", "tree_path"}, {treeIndexVector, model});
 
      auto dataFile = TempFilePath::create();
                       
      std::string path = dataFile->path;
 
-     RowVectorPtr accountRowVector = getAccountData("resources/data/500_mb/financial_account.csv");
+     RowVectorPtr accountRowVector = getAccountData("resources/data/financial_account.csv");
      std::cout << "accountRowVector data generated" << std::endl;
-     RowVectorPtr transactionRowVector = getTransactionData("resources/data/500_mb/financial_transactions.csv");
+     RowVectorPtr transactionRowVector = getTransactionData("resources/data/financial_transactions.csv");
      std::cout << "transactionRowVector data generated" << std::endl;
-     RowVectorPtr customerRowVector = getCustomerData("resources/data/500_mb/customer.csv");
+     RowVectorPtr customerRowVector = getCustomerData("resources/data/customer.csv");
      std::cout << "customerRowVector data generated" << std::endl;
 
      int totalRowsAccount = accountRowVector->size();
@@ -1467,7 +1468,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .planNode();*/
 
 
-     auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+     /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                         .values(batchesCustomer)
                         //.localPartition({"c_customer_sk"})
                         .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country"})
@@ -1507,7 +1508,107 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.filter("is_working_day(t_timestamp) = 1")
                          //.filter("get_binary_class(fraudulent_probs) = 1")
                          //.project({"transaction_id", "get_binary_class(fraudulent_probs)"})
+                         .planNode();*/
+
+
+
+     auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                        .values(customerRowVector)
+                        .localPartition({"c_customer_sk"})
+                        .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country"})
+                        .hashJoin(
+                             {"c_customer_sk"},
+                             {"fa_customer_sk"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values(accountRowVector)
+                             .localPartition({"fa_customer_sk"})
+                             .project({"fa_customer_sk", "fa_transaction_limit"})
+                             .planNode(),
+                             "",
+                             {"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country", "fa_transaction_limit"}
+                        )
+                        .project({"c_customer_sk", "c_birth_year", "mat_vector_add_1(mat_mul_11(get_customer_features(c_address_num, c_cust_flag, c_birth_day, c_birth_month, c_birth_year, c_birth_country, fa_transaction_limit))) as dnn_part11"})
+                         .hashJoin(
+                             {"c_customer_sk"},
+                             {"t_sender"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values(transactionRowVector)
+                             .localPartition({"t_sender"})
+                             .project({"transaction_id", "t_sender", "t_amount", "date_to_timestamp(t_time) as t_timestamp"})
+                             //.filter("is_working_day(t_timestamp) = 1")
+                             .project({"transaction_id", "t_sender", "t_timestamp", "get_transaction_features(t_amount, t_timestamp) as transaction_feature"})
+                             .filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
+                             .project({"transaction_id", "t_sender", "t_timestamp", "mat_mul_12(transaction_feature) AS dnn_part12"})
+                             .planNode(),
+                             "",
+                             {"transaction_id", "t_timestamp", "dnn_part12", "c_birth_year", "dnn_part11"}
+                         )
+                         .filter("is_working_day(t_timestamp) = 1")
+                         //.filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
+                         //.project({"transaction_id", "t_timestamp", "c_birth_year", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(concat(customer_feature, transaction_feature))))))))))) AS fraud_type"})
+                         .project({"transaction_id", "t_timestamp", "c_birth_year", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(vector_addition(dnn_part11, dnn_part12))))))))) AS fraud_type"})
+                         .filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
+                         //.filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
+                         //.filter("is_working_day(t_timestamp) = 1")
+                         //.filter("get_binary_class(fraudulent_probs) = 1")
+                         //.project({"transaction_id", "get_binary_class(fraudulent_probs)"})
                          .planNode();
+
+
+
+     /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                        .values(customerRowVector)
+                        .localPartition({"c_customer_sk"})
+                        .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country"})
+                        .hashJoin(
+                             {"c_customer_sk"},
+                             {"fa_customer_sk"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values(accountRowVector)
+                             .localPartition({"fa_customer_sk"})
+                             .project({"fa_customer_sk", "fa_transaction_limit"})
+                             .planNode(),
+                             "",
+                             {"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country", "fa_transaction_limit"}
+                        )
+                        .project({"c_customer_sk", "c_birth_year", "mat_vector_add_1(mat_mul_11(get_customer_features(c_address_num, c_cust_flag, c_birth_day, c_birth_month, c_birth_year, c_birth_country, fa_transaction_limit))) as dnn_part11"})
+                         .hashJoin(
+                             {"c_customer_sk"},
+                             {"t_sender"},
+                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                             .values(transactionRowVector)
+                             .localPartition({"t_sender"})
+                             .project({"transaction_id", "t_sender", "t_amount", "date_to_timestamp(t_time) as t_timestamp"})
+                             //.filter("is_working_day(t_timestamp) = 1")
+                             .project({"transaction_id", "t_sender", "t_timestamp", "get_transaction_features(t_amount, t_timestamp) as transaction_feature"})
+                             .nestedLoopJoin(
+		                         exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                                 .values({treeRowVector})
+			                     .project({"tree_id as tree_id", "velox_decision_tree_construct(tree_path) as tree"})
+                                 .planNode(),
+                                 {"transaction_id", "t_sender", "t_timestamp", "transaction_feature", "tree_id", "tree"})
+                             .project({"transaction_id", "t_sender", "t_timestamp", "transaction_feature", "tree_id", "velox_decision_tree_predict(transaction_feature, tree) as single_prediction"})
+                             .aggregation({"transaction_id", "t_sender", "t_timestamp", "transaction_feature"},
+				             {"sum(single_prediction) as xgboost_prediction"},
+				             {},
+				             core::AggregationNode::Step::kPartial,
+				             false)
+                             .filter("xgboost_prediction >= 0.5")
+                             .project({"transaction_id", "t_sender", "t_timestamp", "mat_mul_12(transaction_feature) AS dnn_part12"})
+                             .planNode(),
+                             "",
+                             {"transaction_id", "t_timestamp", "dnn_part12", "c_birth_year", "dnn_part11"}
+                         )
+                         .filter("is_working_day(t_timestamp) = 1")
+                         //.filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
+                         //.project({"transaction_id", "t_timestamp", "c_birth_year", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(concat(customer_feature, transaction_feature))))))))))) AS fraud_type"})
+                         .project({"transaction_id", "t_timestamp", "c_birth_year", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(vector_addition(dnn_part11, dnn_part12))))))))) AS fraud_type"})
+                         .filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
+                         //.filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
+                         //.filter("is_working_day(t_timestamp) = 1")
+                         //.filter("get_binary_class(fraudulent_probs) = 1")
+                         //.project({"transaction_id", "get_binary_class(fraudulent_probs)"})
+                         .planNode();*/
 
 
 
