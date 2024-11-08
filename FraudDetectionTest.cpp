@@ -770,6 +770,11 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
           TreePrediction::signatures(),
           std::make_unique<ForestPrediction>(xgboost_fraud_transaction_path, 5, true));
     std::cout << "Completed registering function for xgboost_fraud_transaction" << std::endl;
+ 
+  std::cout << "To register type for Tree" << std::endl;
+    
+  registerCustomType("tree_type", std::make_unique<TreeTypeFactories>());
+
 
   std::cout << "To register function for VeloxTreePrediction" << std::endl;
 
@@ -1380,7 +1385,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
      treeIndexVector->set(i, i);
 
   }
-  auto treeRowVector = maker.rowVector({"tree_id", "tree_path"}, {treeIndexVector, model});
+  auto treeRowVector = maker.rowVector({"tree_id", "tree_path"}, {treeIndexVector, treeModels});
 
      auto dataFile = TempFilePath::create();
                       
@@ -1512,15 +1517,15 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
 
-     auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                        .values(customerRowVector)
+     /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+        .values({customerRowVector})
                         .localPartition({"c_customer_sk"})
                         .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country"})
                         .hashJoin(
                              {"c_customer_sk"},
                              {"fa_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values(accountRowVector)
+                                  .values({accountRowVector})
                              .localPartition({"fa_customer_sk"})
                              .project({"fa_customer_sk", "fa_transaction_limit"})
                              .planNode(),
@@ -1532,10 +1537,10 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"c_customer_sk"},
                              {"t_sender"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values(transactionRowVector)
+                                   .values({transactionRowVector})
                              .localPartition({"t_sender"})
                              .project({"transaction_id", "t_sender", "t_amount", "date_to_timestamp(t_time) as t_timestamp"})
-                             //.filter("is_working_day(t_timestamp) = 1")
+                             .filter("is_working_day(t_timestamp) = 1")
                              .project({"transaction_id", "t_sender", "t_timestamp", "get_transaction_features(t_amount, t_timestamp) as transaction_feature"})
                              .filter("xgboost_fraud_transaction(transaction_feature) >= 0.5")
                              .project({"transaction_id", "t_sender", "t_timestamp", "mat_mul_12(transaction_feature) AS dnn_part12"})
@@ -1543,7 +1548,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              "",
                              {"transaction_id", "t_timestamp", "dnn_part12", "c_birth_year", "dnn_part11"}
                          )
-                         .filter("is_working_day(t_timestamp) = 1")
+                         //.filter("is_working_day(t_timestamp) = 1")
                          //.filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
                          //.project({"transaction_id", "t_timestamp", "c_birth_year", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(concat(customer_feature, transaction_feature))))))))))) AS fraud_type"})
                          .project({"transaction_id", "t_timestamp", "c_birth_year", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(vector_addition(dnn_part11, dnn_part12))))))))) AS fraud_type"})
@@ -1552,19 +1557,19 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.filter("is_working_day(t_timestamp) = 1")
                          //.filter("get_binary_class(fraudulent_probs) = 1")
                          //.project({"transaction_id", "get_binary_class(fraudulent_probs)"})
-                         .planNode();
+                         .planNode();*/
 
 
 
-     /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                        .values(customerRowVector)
+     auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+                        .values({customerRowVector})
                         .localPartition({"c_customer_sk"})
                         .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country"})
                         .hashJoin(
                              {"c_customer_sk"},
                              {"fa_customer_sk"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values(accountRowVector)
+                             .values({accountRowVector})
                              .localPartition({"fa_customer_sk"})
                              .project({"fa_customer_sk", "fa_transaction_limit"})
                              .planNode(),
@@ -1576,10 +1581,10 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              {"c_customer_sk"},
                              {"t_sender"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values(transactionRowVector)
+                             .values({transactionRowVector})
                              .localPartition({"t_sender"})
                              .project({"transaction_id", "t_sender", "t_amount", "date_to_timestamp(t_time) as t_timestamp"})
-                             //.filter("is_working_day(t_timestamp) = 1")
+                             .filter("is_working_day(t_timestamp) = 1")
                              .project({"transaction_id", "t_sender", "t_timestamp", "get_transaction_features(t_amount, t_timestamp) as transaction_feature"})
                              .nestedLoopJoin(
 		                         exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
@@ -1599,7 +1604,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                              "",
                              {"transaction_id", "t_timestamp", "dnn_part12", "c_birth_year", "dnn_part11"}
                          )
-                         .filter("is_working_day(t_timestamp) = 1")
+                         //.filter("is_working_day(t_timestamp) = 1")
                          //.filter("age_during_transaction(t_timestamp, c_birth_year) >= 18")
                          //.project({"transaction_id", "t_timestamp", "c_birth_year", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(mat_vector_add_1(mat_mul_1(concat(customer_feature, transaction_feature))))))))))) AS fraud_type"})
                          .project({"transaction_id", "t_timestamp", "c_birth_year", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(vector_addition(dnn_part11, dnn_part12))))))))) AS fraud_type"})
@@ -1608,7 +1613,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.filter("is_working_day(t_timestamp) = 1")
                          //.filter("get_binary_class(fraudulent_probs) = 1")
                          //.project({"transaction_id", "get_binary_class(fraudulent_probs)"})
-                         .planNode();*/
+                         .planNode();
 
 
 

@@ -481,7 +481,7 @@ class GetDistance : public MLFunction {
       VectorPtr& output) const override {
     BaseVector::ensureWritable(rows, type, context.pool(), output);
 
-    std::vector<float> results;
+    std::vector<double> results;
 
     BaseVector* base0 = args[0].get();
     BaseVector* base1 = args[1].get();
@@ -502,28 +502,28 @@ class GetDistance : public MLFunction {
 
     for (int i = 0; i < rows.size(); i++) {
 
-        float lat1 = decodedArray0->valueAt<float>(i);
-        float lon1 = decodedArray1->valueAt<float>(i);
-        float lat2 = decodedArray2->valueAt<float>(i);
-        float lon2 = decodedArray3->valueAt<float>(i);
+        double lat1 = decodedArray0->valueAt<double>(i);
+        double lon1 = decodedArray1->valueAt<double>(i);
+        double lat2 = decodedArray2->valueAt<double>(i);
+        double lon2 = decodedArray3->valueAt<double>(i);
 
-        float distance = std::sqrt(std::pow(lat1 - lat2, 2) + std::pow(lon1 - lon2, 2));
+        double distance = std::sqrt(std::pow(lat1 - lat2, 2) + std::pow(lon1 - lon2, 2));
         results.push_back(distance);
     }
 
     VectorMaker maker{context.pool()};
     //output = maker.arrayVector<float>(results, REAL());
-    auto localResult = maker.flatVector<float>(results);
+    auto localResult = maker.flatVector<double>(results);
     context.moveOrCopyResult(localResult, rows, output);
   }
 
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
     return {exec::FunctionSignatureBuilder()
-                .argumentType("REAL")
-                .argumentType("REAL")
-                .argumentType("REAL")
-                .argumentType("REAL")
-                .returnType("REAL")
+                .argumentType("DOUBLE")
+                .argumentType("DOUBLE")
+                .argumentType("DOUBLE")
+                .argumentType("DOUBLE")
+                .returnType("DOUBLE")
                 .build()};
   }
 
@@ -896,8 +896,10 @@ RowVectorPtr NycModelTest::getCensusData(std::string filePath) {
     }
 
     std::vector<int> cId;
-    std::vector<float> cLat;
-    std::vector<float> cLon;
+    std::vector<double> cLat;
+    std::vector<double> cLon;
+    std::vector<int> cBucketLat;
+    std::vector<int> cBucketLon;
     std::vector<std::vector<float>> cFeatures;
 
 
@@ -951,10 +953,14 @@ RowVectorPtr NycModelTest::getCensusData(std::string filePath) {
                 numberStr = numberStr.substr(1, numberStr.size() - 2);
             }
             if (colIndex == latIndex) {
-                cLat.push_back(std::stof(numberStr));
+                double numTemp = std::stod(numberStr);
+                cLat.push_back(numTemp);
+                cBucketLat.push_back(static_cast<int>(numTemp * 100.0));
             }
             else if (colIndex == lonIndex) {
-                cLon.push_back(std::stof(numberStr));
+                double numTemp = std::stod(numberStr);
+                cLon.push_back(numTemp);
+                cBucketLon.push_back(static_cast<int>(numTemp * 100.0));
             }
             else if (colIndex == idIndex) {
                 cId.push_back(std::stoi(numberStr));
@@ -974,12 +980,14 @@ RowVectorPtr NycModelTest::getCensusData(std::string filePath) {
 
      // Prepare Customer table
      auto cIdVector = maker.flatVector<int>(cId);
-     auto cLatVector = maker.flatVector<float>(cLat);
-     auto cLonVector = maker.flatVector<float>(cLon);
+     auto cLatVector = maker.flatVector<double>(cLat);
+     auto cLonVector = maker.flatVector<double>(cLon);
+     auto cBucketLatVector = maker.flatVector<int>(cBucketLat);
+     auto cBucketLonVector = maker.flatVector<int>(cBucketLon);
      auto cFeaturesVector = maker.arrayVector<float>(cFeatures, REAL());
      auto censusRowVector = maker.rowVector(
-         {"c_id", "c_lat", "c_lon", "c_features"},
-         {cIdVector, cLatVector, cLonVector, cFeaturesVector}
+         {"c_id", "c_lat", "c_lon", "c_bucket_lat", "c_bucket_lon", "c_features"},
+         {cIdVector, cLatVector, cLonVector, cBucketLatVector, cBucketLonVector, cFeaturesVector}
      );
 
      return censusRowVector;
@@ -998,9 +1006,11 @@ RowVectorPtr NycModelTest::getEarningData(std::string filePath) {
     }
 
     std::vector<int> eId;
-    std::vector<int> eClass
-    std::vector<float> eLat;
-    std::vector<float> eLon;
+    std::vector<int> eClass;
+    std::vector<double> eLat;
+    std::vector<double> eLon;
+    std::vector<int> eBucketLat;
+    std::vector<int> eBucketLon;
     std::vector<std::vector<float>> eFeatures;
 
 
@@ -1058,10 +1068,14 @@ RowVectorPtr NycModelTest::getEarningData(std::string filePath) {
                 numberStr = numberStr.substr(1, numberStr.size() - 2);
             }
             if (colIndex == latIndex) {
-                eLat.push_back(std::stof(numberStr));
+                double numTemp = std::stod(numberStr);
+                eLat.push_back(numTemp);
+                eBucketLat.push_back(static_cast<int>(numTemp * 100.0));
             }
             else if (colIndex == lonIndex) {
-                eLon.push_back(std::stof(numberStr));
+                double numTemp = std::stod(numberStr);
+                eLon.push_back(numTemp);
+                eBucketLon.push_back(static_cast<int>(numTemp * 100.0));
             }
             else if (colIndex == idIndex) {
                 eId.push_back(std::stoi(numberStr));
@@ -1085,12 +1099,14 @@ RowVectorPtr NycModelTest::getEarningData(std::string filePath) {
      // Prepare Customer table
      auto eIdVector = maker.flatVector<int>(eId);
      auto eClassVector = maker.flatVector<int>(eClass);
-     auto eLatVector = maker.flatVector<float>(eLat);
-     auto eLonVector = maker.flatVector<float>(eLon);
+     auto eLatVector = maker.flatVector<double>(eLat);
+     auto eLonVector = maker.flatVector<double>(eLon);
+     auto eBucketLatVector = maker.flatVector<int>(eBucketLat);
+     auto eBucketLonVector = maker.flatVector<int>(eBucketLon);
      auto eFeaturesVector = maker.arrayVector<float>(eFeatures, REAL());
      auto earningRowVector = maker.rowVector(
-         {"e_id", "e_class", "e_lat", "e_lon", "e_features"},
-         {cIdVector, eClassVector, cLatVector, cLonVector, cFeaturesVector}
+         {"e_id", "e_class", "e_lat", "e_lon", "e_bucket_lat", "e_bucket_lon", "e_features"},
+         {eIdVector, eClassVector, eLatVector, eLonVector, eBucketLatVector, eBucketLonVector, eFeaturesVector}
      );
 
      return earningRowVector;
@@ -1104,9 +1120,9 @@ void NycModelTest::testingWithRealData(int numDataSplits, int dataBatchSize, int
                       
      std::string path = dataFile->path;
 
-     RowVectorPtr censusRowVector = getOrderData("resources/data/nyc_2000Census.csv");
+     RowVectorPtr censusRowVector = getCensusData("resources/data/nyc_2000Census.csv");
      std::cout << "censusRowVector data generated" << std::endl;
-     RowVectorPtr earningRowVector = getStoreData("resources/data/nyc_earning.csv");
+     RowVectorPtr earningRowVector = getEarningData("resources/data/nyc_earning.csv");
      std::cout << "earningRowVector data generated" << std::endl;
 
      int totalRowsCensus = censusRowVector->size();
@@ -1128,10 +1144,10 @@ void NycModelTest::testingWithRealData(int numDataSplits, int dataBatchSize, int
 
          start = i * batchSizeEarning;
          end = (i == (batch_counts - 1)) ? totalRowsEarning : (i + 1) * batchSizeEarning;  // Handle remainder for last batch
-         batchSizeEarning.push_back(std::dynamic_pointer_cast<RowVector>(earningRowVector->slice(start, end - start)));
+         batchesEarning.push_back(std::dynamic_pointer_cast<RowVector>(earningRowVector->slice(start, end - start)));
      }
 
-     registerNNFunctions(103, 56, 32, "resources/model/trip_type_classify.h5");
+     registerNNFunctions(103, 56, 32, "resources/model/model_nyc_2_32_2.h5");
      CPUUtilizationTracker tracker;
 
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
@@ -1141,14 +1157,14 @@ void NycModelTest::testingWithRealData(int numDataSplits, int dataBatchSize, int
 
     auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values({earningRowVector})
-                         .localPartition({"e_lat", "e_lon"})
-                         .project({"e_id", "e_lat", "e_lon", "e_class", "mat_mul_11(e_features) as dnn_part1"})
-                         .hashJoin({"e_lat", "e_lon"},
-                             {"c_lat", "c_lon"},
+                         .localPartition({"e_bucket_lat", "e_bucket_lon"})
+                         .project({"e_id", "e_lat", "e_lon", "e_class", "e_bucket_lat", "e_bucket_lon", "mat_mul_11(e_features) as dnn_part1"})
+                         .hashJoin({"e_bucket_lat", "e_bucket_lon"},
+                             {"c_bucket_lat", "c_bucket_lon"},
                              exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                              .values({censusRowVector})
-                             .localPartition({"c_lat", "c_lon"})
-                             .project({"c_id", "c_lat", "c_lon", "mat_vector_add_1(mat_mul_12(c_features)) as dnn_part2"})
+                             .localPartition({"c_bucket_lat", "c_bucket_lon"})
+                             .project({"c_id", "c_lat", "c_lon", "c_bucket_lat", "c_bucket_lon", "mat_vector_add_1(mat_mul_12(c_features)) as dnn_part2"})
                              .planNode(),
                              "get_distance(e_lat, e_lon, c_lat, c_lon) <= 0.3",
                              {"e_id", "c_id", "e_class", "dnn_part1", "dnn_part2"}
@@ -1162,8 +1178,8 @@ void NycModelTest::testingWithRealData(int numDataSplits, int dataBatchSize, int
     std::chrono::steady_clock::time_point end2 = std::chrono::steady_clock::now();
 
     //std::cout << "Results:" << results->toString() << std::endl;
-    std::cout << "Single Batch with DNN first Results Size: " << results2->size() << std::endl;
-    std::cout << results2->toString(0, 5) << std::endl;
+    std::cout << "Results Size: " << results2->size() << std::endl;
+    std::cout << results2->toString(0, 10) << std::endl;
     std::cout << "Time for Executing with Single Batch (sec): " << std::endl;
     std::cout << (std::chrono::duration_cast<std::chrono::microseconds>(end2 - begin2).count()) /1000.0 << std::endl;
 
