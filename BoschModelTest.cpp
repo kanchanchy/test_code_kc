@@ -545,9 +545,9 @@ class GetDistance : public MLFunction {
 
 
 
-class NycModelTest : public HiveConnectorTestBase {
+class BoschModelTest : public HiveConnectorTestBase {
  public:
-  NycModelTest() {
+  BoschModelTest() {
     // Register Presto scalar functions.
     functions::prestosql::registerAllScalarFunctions();
 
@@ -568,14 +568,14 @@ class NycModelTest : public HiveConnectorTestBase {
     // SetUp();
   }
 
-  ~NycModelTest() {}
+  ~BoschModelTest() {}
 
   void registerFunctions(std::string modelFilePath, int numCols);
   void registerNNFunctions(int numCols, int leftCols, int splitNeuron, std::string modelPath);
   void run( int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath, std::string orderDataFilePath);
 
-  RowVectorPtr getCensusData(std::string filePath);
-  RowVectorPtr getEarningData(std::string filePath);
+  RowVectorPtr getLeftData(std::string filePath);
+  RowVectorPtr getRightData(std::string filePath);
   std::vector<std::vector<float>> loadHDF5Array(const std::string& filename, const std::string& datasetName, int doPrint);
   void testingWithRealData(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath);
 
@@ -615,7 +615,7 @@ class NycModelTest : public HiveConnectorTestBase {
   VectorMaker maker{pool_.get()};
 };
 
-void NycModelTest::registerFunctions(std::string modelFilePath, int numCols) {
+void BoschModelTest::registerFunctions(std::string modelFilePath, int numCols) {
 
   exec::registerVectorFunction(
           "get_order_features",
@@ -644,7 +644,7 @@ void NycModelTest::registerFunctions(std::string modelFilePath, int numCols) {
 }
 
 
-void NycModelTest::registerNNFunctions(int numCols, int leftCols, int splitNeuron, std::string modelPath) {
+void BoschModelTest::registerNNFunctions(int numCols, int leftCols, int splitNeuron, std::string modelPath) {
   std::vector<std::vector<float>> w1 = loadHDF5Array(modelPath, "fc1.weight", 0);
   std::vector<std::vector<float>> b1 = loadHDF5Array(modelPath, "fc1.bias", 0);
   std::vector<std::vector<float>> w2 = loadHDF5Array(modelPath, "fc_extras.0.weight", 0);
@@ -685,13 +685,13 @@ void NycModelTest::registerNNFunctions(int numCols, int leftCols, int splitNeuro
       std::make_unique<MatrixMultiply>(
           std::move(itemNNweight2Vector->elements()->values()->asMutable<float>()),
           splitNeuron,
-          2));
+          3));
 
   exec::registerVectorFunction(
       "mat_vector_add_2",
       MatrixVectorAddition::signatures(),
       std::make_unique<MatrixVectorAddition>(
-          std::move(itemNNBias2Vector->elements()->values()->asMutable<float>()), 2));
+          std::move(itemNNBias2Vector->elements()->values()->asMutable<float>()), 3));
 
   exec::registerVectorFunction(
       "relu", Relu::signatures(), std::make_unique<Relu>(),
@@ -727,7 +727,7 @@ void NycModelTest::registerNNFunctions(int numCols, int leftCols, int splitNeuro
 
 
 
-ArrayVectorPtr NycModelTest::parseCSVFile(VectorMaker & maker, std::string filePath, int numRows, int numCols) {
+ArrayVectorPtr BoschModelTest::parseCSVFile(VectorMaker & maker, std::string filePath, int numRows, int numCols) {
 
     int size = numRows * numCols;
 
@@ -784,7 +784,7 @@ ArrayVectorPtr NycModelTest::parseCSVFile(VectorMaker & maker, std::string fileP
 
 }
 
-RowVectorPtr NycModelTest::writeDataToFile(std::string csvFilePath, int numRows, int numCols, 
+RowVectorPtr BoschModelTest::writeDataToFile(std::string csvFilePath, int numRows, int numCols, 
                                                  int numDataSplits, std::string outPath, int dataBatchSize) {
 
     ArrayVectorPtr inputArrayVector = parseCSVFile(maker, csvFilePath, numRows, numCols);
@@ -826,7 +826,7 @@ RowVectorPtr NycModelTest::writeDataToFile(std::string csvFilePath, int numRows,
 }
 
 
-std::vector<std::vector<float>> NycModelTest::loadHDF5Array(const std::string& filename, const std::string& datasetName, int doPrint) {
+std::vector<std::vector<float>> BoschModelTest::loadHDF5Array(const std::string& filename, const std::string& datasetName, int doPrint) {
     /*if (!std::filesystem::exists(filename)) {
           throw std::runtime_error("File not found: " + filename);
     }*/
@@ -884,7 +884,7 @@ std::vector<std::vector<float>> NycModelTest::loadHDF5Array(const std::string& f
 }
 
 
-RowVectorPtr NycModelTest::getCensusData(std::string filePath) {
+RowVectorPtr BoschModelTest::getLeftData(std::string filePath) {
 
     std::ifstream file(filePath.c_str());
 
@@ -895,17 +895,16 @@ RowVectorPtr NycModelTest::getCensusData(std::string filePath) {
 
     }
 
-    std::vector<int> cId;
-    std::vector<double> cLat;
-    std::vector<double> cLon;
-    std::vector<int> cBucketLat;
-    std::vector<int> cBucketLon;
-    std::vector<std::vector<float>> cFeatures;
+    std::vector<int> lId;
+    std::vector<float> lJoinKey;
+    std::vector<int> lBucketKey;
+    std::vector<int> lClass;
+    std::vector<std::vector<float>> lFeatures;
 
 
     std::string line;
-    int latIndex;
-    int lonIndex;
+    int joinKeyIndex;
+    int classIndex;
     int idIndex;
 
     // Ignore the first line (header)
@@ -918,13 +917,13 @@ RowVectorPtr NycModelTest::getCensusData(std::string filePath) {
             if (numberStr.size() >= 2 && numberStr.front() == '"' && numberStr.back() == '"') {
                 numberStr = numberStr.substr(1, numberStr.size() - 2);
             }
-            if (numberStr == "lat_centroid") {
-                latIndex = colIndex;
+            if (numberStr == "join_key") {
+                joinKeyIndex = colIndex;
             }
-            else if (numberStr == "lon_centroid") {
-                lonIndex = colIndex;
+            else if (numberStr == "response") {
+                classIndex = colIndex;
             }
-            else if (numberStr == "id_centroid") {
+            else if (numberStr == "_id") {
                 idIndex = colIndex;
             }
             colIndex ++;
@@ -952,18 +951,17 @@ RowVectorPtr NycModelTest::getCensusData(std::string filePath) {
             if (numberStr.size() >= 2 && numberStr.front() == '"' && numberStr.back() == '"') {
                 numberStr = numberStr.substr(1, numberStr.size() - 2);
             }
-            if (colIndex == latIndex) {
-                double numTemp = std::stod(numberStr);
-                cLat.push_back(numTemp);
-                cBucketLat.push_back(static_cast<int>(numTemp * 100.0));
+            if (colIndex == joinKeyIndex) {
+                double numTemp = std::stof(numberStr);
+                lJoinKey.push_back(numTemp);
+                features.push_back(numTemp);
+                lBucketKey.push_back(static_cast<int>(numTemp * 10.0));
             }
-            else if (colIndex == lonIndex) {
-                double numTemp = std::stod(numberStr);
-                cLon.push_back(numTemp);
-                cBucketLon.push_back(static_cast<int>(numTemp * 100.0));
+            else if (colIndex == classIndex) {
+                lClass.push_back(std::stoi(numberStr));
             }
             else if (colIndex == idIndex) {
-                cId.push_back(std::stoi(numberStr));
+                lId.push_back(std::stoi(numberStr));
             }
             else {
                 features.push_back(std::stof(numberStr));
@@ -972,29 +970,28 @@ RowVectorPtr NycModelTest::getCensusData(std::string filePath) {
 	        colIndex ++;
 
         }
-        cFeatures.push_back(features);
+        lFeatures.push_back(features);
 
     }
 
     file.close();
 
      // Prepare Customer table
-     auto cIdVector = maker.flatVector<int>(cId);
-     auto cLatVector = maker.flatVector<double>(cLat);
-     auto cLonVector = maker.flatVector<double>(cLon);
-     auto cBucketLatVector = maker.flatVector<int>(cBucketLat);
-     auto cBucketLonVector = maker.flatVector<int>(cBucketLon);
-     auto cFeaturesVector = maker.arrayVector<float>(cFeatures, REAL());
-     auto censusRowVector = maker.rowVector(
-         {"c_id", "c_lat", "c_lon", "c_bucket_lat", "c_bucket_lon", "c_features"},
-         {cIdVector, cLatVector, cLonVector, cBucketLatVector, cBucketLonVector, cFeaturesVector}
+     auto lIdVector = maker.flatVector<int>(lId);
+     auto lJoinKeyVector = maker.flatVector<double>(lJoinKey);
+     auto lBucketKeyVector = maker.flatVector<int>(lBucketKey);
+     auto lClassVector = maker.flatVector<int>(lClass);
+     auto lFeaturesVector = maker.arrayVector<float>(lFeatures, REAL());
+     auto leftRowVector = maker.rowVector(
+         {"l_id", "l_join_key", "l_bucket_key", "l_class", "l_features"},
+         {lIdVector, lJoinKeyVector, lBucketKeyVector, lClassVector, lFeaturesVector}
      );
 
-     return censusRowVector;
+     return leftRowVector;
 }
 
 
-RowVectorPtr NycModelTest::getEarningData(std::string filePath) {
+RowVectorPtr BoschModelTest::getRightData(std::string filePath) {
 
     std::ifstream file(filePath.c_str());
 
@@ -1005,18 +1002,15 @@ RowVectorPtr NycModelTest::getEarningData(std::string filePath) {
 
     }
 
-    std::vector<int> eId;
-    std::vector<int> eClass;
-    std::vector<double> eLat;
-    std::vector<double> eLon;
-    std::vector<int> eBucketLat;
-    std::vector<int> eBucketLon;
-    std::vector<std::vector<float>> eFeatures;
+    std::vector<int> rId;
+    std::vector<int> rClass;
+    std::vector<double> rJoinKey;
+    std::vector<int> rBucketKey;
+    std::vector<std::vector<float>> rFeatures;
 
 
     std::string line;
-    int latIndex;
-    int lonIndex;
+    int joinKeyIndex;
     int idIndex;
     int classIndex;
 
@@ -1030,16 +1024,13 @@ RowVectorPtr NycModelTest::getEarningData(std::string filePath) {
             if (numberStr.size() >= 2 && numberStr.front() == '"' && numberStr.back() == '"') {
                 numberStr = numberStr.substr(1, numberStr.size() - 2);
             }
-            if (numberStr == "lat_intpt") {
-                latIndex = colIndex;
+            if (numberStr == "join_key2") {
+                joinKeyIndex = colIndex;
             }
-            else if (numberStr == "lon_intpt") {
-                lonIndex = colIndex;
-            }
-            else if (numberStr == "id_intpt") {
+            else if (numberStr == "_id_part2") {
                 idIndex = colIndex;
             }
-            else if (numberStr == "category") {
+            else if (numberStr == "response_part2") {
                 classIndex = colIndex;
             }
             colIndex ++;
@@ -1067,21 +1058,17 @@ RowVectorPtr NycModelTest::getEarningData(std::string filePath) {
             if (numberStr.size() >= 2 && numberStr.front() == '"' && numberStr.back() == '"') {
                 numberStr = numberStr.substr(1, numberStr.size() - 2);
             }
-            if (colIndex == latIndex) {
+            if (colIndex == joinKeyIndex) {
                 double numTemp = std::stod(numberStr);
-                eLat.push_back(numTemp);
-                eBucketLat.push_back(static_cast<int>(numTemp * 100.0));
-            }
-            else if (colIndex == lonIndex) {
-                double numTemp = std::stod(numberStr);
-                eLon.push_back(numTemp);
-                eBucketLon.push_back(static_cast<int>(numTemp * 100.0));
+                rJoinKey.push_back(numTemp);
+                features.push_back(numTemp);
+                rBucketKey.push_back(static_cast<int>(numTemp * 10.0));
             }
             else if (colIndex == idIndex) {
-                eId.push_back(std::stoi(numberStr));
+                rId.push_back(std::stoi(numberStr));
             }
             else if (colIndex == classIndex) {
-                eClass.push_back(std::stoi(numberStr));
+                rClass.push_back(std::stoi(numberStr));
             }
             else {
                 features.push_back(std::stof(numberStr));
@@ -1090,86 +1077,84 @@ RowVectorPtr NycModelTest::getEarningData(std::string filePath) {
 	        colIndex ++;
 
         }
-        eFeatures.push_back(features);
+        rFeatures.push_back(features);
 
     }
 
     file.close();
 
      // Prepare Customer table
-     auto eIdVector = maker.flatVector<int>(eId);
-     auto eClassVector = maker.flatVector<int>(eClass);
-     auto eLatVector = maker.flatVector<double>(eLat);
-     auto eLonVector = maker.flatVector<double>(eLon);
-     auto eBucketLatVector = maker.flatVector<int>(eBucketLat);
-     auto eBucketLonVector = maker.flatVector<int>(eBucketLon);
-     auto eFeaturesVector = maker.arrayVector<float>(eFeatures, REAL());
-     auto earningRowVector = maker.rowVector(
-         {"e_id", "e_class", "e_lat", "e_lon", "e_bucket_lat", "e_bucket_lon", "e_features"},
-         {eIdVector, eClassVector, eLatVector, eLonVector, eBucketLatVector, eBucketLonVector, eFeaturesVector}
+     auto rIdVector = maker.flatVector<int>(rId);
+     auto rClassVector = maker.flatVector<int>(rClass);
+     auto rJoinKeyVector = maker.flatVector<double>(rJoinKey);
+     auto rBucketKeyVector = maker.flatVector<int>(rBucketKey);
+     auto rFeaturesVector = maker.arrayVector<float>(rFeatures, REAL());
+     auto rightRowVector = maker.rowVector(
+         {"r_id", "r_class", "r_join_key", "r_bucket_key", "r_features"},
+         {rIdVector, rClassVector, rJoinKeyVector, rBucketKeyVector, rFeaturesVector}
      );
 
-     return earningRowVector;
+     return rightRowVector;
 }
 
 
 
-void NycModelTest::testingWithRealData(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string orderFilePath, std::string modelFilePath) {
+void BoschModelTest::testingWithRealData(int numDataSplits, int dataBatchSize, int numRows, int numCols, std::string orderFilePath, std::string modelFilePath) {
 
      auto dataFile = TempFilePath::create();
                       
      std::string path = dataFile->path;
 
-     RowVectorPtr censusRowVector = getCensusData("resources/data/nyc_2000Census.csv");
-     std::cout << "censusRowVector data generated" << std::endl;
-     RowVectorPtr earningRowVector = getEarningData("resources/data/nyc_earning.csv");
-     std::cout << "earningRowVector data generated" << std::endl;
+     RowVectorPtr leftRowVector = getLeftData("resources/data/bosch_left.csv");
+     std::cout << "leftRowVector data generated" << std::endl;
+     RowVectorPtr rightRowVector = getRightData("resources/data/bosch_right.csv");
+     std::cout << "rightRowVector data generated" << std::endl;
 
-     int totalRowsCensus = censusRowVector->size();
-     int totalRowsEarning = earningRowVector->size();
+     int totalRowsLeft = leftRowVector->size();
+     int totalRowsRight = rightRowVector->size();
 
-     std::cout << "census data size: " << totalRowsCensus << ",  earning data size: " << totalRowsEarning << std::endl;
+     std::cout << "Left data size: " << totalRowsLeft << ",  Right data size: " << totalRowsRight << std::endl;
 
      int batch_counts = 4;
-     int batchSizeCensus = totalRowsCensus / batch_counts;
-     int batchSizeEarning = totalRowsEarning / batch_counts;
+     int batchSizeLeft = totalRowsLeft / batch_counts;
+     int batchSizeRight = totalRowsRight / batch_counts;
 
-     std::vector<RowVectorPtr> batchesCensus;
-     std::vector<RowVectorPtr> batchesEarning;
+     std::vector<RowVectorPtr> batchesLeft;
+     std::vector<RowVectorPtr> batchesRight;
 
      for (int i = 0; i < batch_counts; ++i) {
-         int start = i * batchSizeCensus;
-         int end = (i == (batch_counts - 1)) ? totalRowsCensus : (i + 1) * batchSizeCensus;  // Handle remainder for last batch
-         batchesCensus.push_back(std::dynamic_pointer_cast<RowVector>(censusRowVector->slice(start, end - start)));
+         int start = i * batchSizeLeft;
+         int end = (i == (batch_counts - 1)) ? totalRowsLeft : (i + 1) * batchSizeLeft;  // Handle remainder for last batch
+         batchesLeft.push_back(std::dynamic_pointer_cast<RowVector>(leftRowVector->slice(start, end - start)));
 
-         start = i * batchSizeEarning;
-         end = (i == (batch_counts - 1)) ? totalRowsEarning : (i + 1) * batchSizeEarning;  // Handle remainder for last batch
-         batchesEarning.push_back(std::dynamic_pointer_cast<RowVector>(earningRowVector->slice(start, end - start)));
+         start = i * batchSizeRight;
+         end = (i == (batch_counts - 1)) ? totalRowsRight : (i + 1) * batchSizeRight;  // Handle remainder for last batch
+         batchesRight.push_back(std::dynamic_pointer_cast<RowVector>(rightRowVector->slice(start, end - start)));
      }
 
-     registerNNFunctions(103, 56, 32, "resources/model/model_nyc_103_2/model_nyc_2_32_2.h5");
+     registerNNFunctions(968, 484, 64, "resources/model/model_bosch_968_2/model_bosch_2_64_3.h5");
      CPUUtilizationTracker tracker;
 
      auto dataHiveSplits =  makeHiveConnectorSplits(path, numDataSplits, dwio::common::FileFormat::DWRF);
 
-     auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
+     auto planNodrIdGenerator = std::make_shared<core::PlanNodrIdGenerator>();
 
 
-    auto myPlan2 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                         .values({earningRowVector})
-                         .localPartition({"e_bucket_lat", "e_bucket_lon"})
-                         .project({"e_id", "e_lat", "e_lon", "e_class", "e_bucket_lat", "e_bucket_lon", "mat_mul_11(e_features) as dnn_part1"})
-                         .hashJoin({"e_bucket_lat", "e_bucket_lon"},
-                             {"c_bucket_lat", "c_bucket_lon"},
-                             exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
-                             .values({censusRowVector})
-                             .localPartition({"c_bucket_lat", "c_bucket_lon"})
-                             .project({"c_id", "c_lat", "c_lon", "c_bucket_lat", "c_bucket_lon", "mat_vector_add_1(mat_mul_12(c_features)) as dnn_part2"})
+    auto myPlan2 = exec::test::PlanBuilder(planNodrIdGenerator, pool_.get())
+                         .values({leftRowVector})
+                         .localPartition({"l_bucket_key", "l_class"})
+                         .project({"l_id", "l_join_key", "l_class", "l_bucket_key", "mat_mul_11(l_features) as dnn_part1"})
+                         .hashJoin({"l_bucket_key", "l_class"},
+                             {"r_bucket_key", "r_class"},
+                             exec::test::PlanBuilder(planNodrIdGenerator, pool_.get())
+                             .values({leftRowVector})
+                             .localPartition({"r_bucket_key", "r_class"})
+                             .project({"r_id", "r_join_key", "r_bucket_key", "r_class", "mat_vector_add_1(mat_mul_12(r_features)) as dnn_part2"})
                              .planNode(),
-                             "get_distance(e_lat, e_lon, c_lat, c_lon) <= 0.3",
-                             {"e_id", "c_id", "e_class", "dnn_part1", "dnn_part2"}
+                             "abs(l_join_key, r_join_key) <= 0.3",
+                             {"l_id", "r_id", "r_class", "dnn_part1", "dnn_part2"}
                          )
-                         .project({"e_id", "c_id", "e_class", "get_max_index(softmax(mat_vector_add_2(mat_mul_2(vector_addition(dnn_part1, dnn_part2))))) AS predicted_class"})
+                         .project({"l_id", "r_id", "r_class", "get_max_index(softmax(mat_vector_add_2(mat_mul_2(vector_addition(dnn_part1, dnn_part2))))) AS predicted_class"})
                          .planNode();
 
 
@@ -1188,7 +1173,7 @@ void NycModelTest::testingWithRealData(int numDataSplits, int dataBatchSize, int
 }
 
 
-void NycModelTest::run(int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath, std::string orderDataFilePath) {
+void BoschModelTest::run(int option, int numDataSplits, int numTreeSplits, int numTreeRows, int dataBatchSize, int numRows, int numCols, std::string dataFilePath, std::string modelFilePath, std::string orderDataFilePath) {
 
   std::cout << "Option is " << option << std::endl;
   registerFunctions(modelFilePath, 9);
@@ -1233,7 +1218,7 @@ int main(int argc, char** argv) {
   std::string modelFilePath = FLAGS_modelFilePath;
   std::string orderDataFilePath = FLAGS_orderDataFilePath;
 
-  NycModelTest demo;
+  BoschModelTest demo;
 
   std::cout << fmt::format("Option: {}, numDataSplits: {}, numTreeSplits: {}, numTreeRows: {}, dataBatchSize: {}, numRows: {}, numCols: {}, dataFilePath: {}, modelFilePath: {}, orderDataFilePath: {}", 
                            option, numDataSplits, numTreeSplits, numTreeRows, numRows, numCols, dataBatchSize, dataFilePath, modelFilePath, orderDataFilePath) 

@@ -204,6 +204,26 @@ target_link_libraries(
   ${HDF5_CXX_LIBRARIES}
 )
 
+add_executable(bosch_model_test tests/BoschModelTest.cpp)
+target_link_libraries(
+  bosch_model_test
+  velox_aggregates
+  velox_type
+  velox_vector
+  velox_vector_test_lib
+  velox_exec
+  velox_exec_test_lib
+  velox_tpch_connector
+  velox_memory
+  velox_common_base
+  velox_vector_fuzzer
+  velox_dwio_parquet_reader
+  ${TORCH_LIBRARIES}
+  h5cpp::h5cpp
+  hdf5_serial
+  ${HDF5_CXX_LIBRARIES}
+)
+
 add_executable(trip_type_detection_test tests/TripTypeDetectionTest.cpp)
 target_link_libraries(
   trip_type_detection_test
