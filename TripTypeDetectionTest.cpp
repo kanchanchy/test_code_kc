@@ -312,35 +312,6 @@ class IsPopularStore : public MLFunction {
     auto decodedArray = vecHolder.get();
     auto arrayVector = decodedArray->base()->as<ArrayVector>();
     auto flatElements = arrayVector->elements()->asFlatVector<float>();
-    //auto baseLeftArray = decodedLeftArray->base()->as<ArrayVector>()->elements();
-    //float* input1Values = baseLeftArray->values()->asMutable<float>();
-
-    /*std::vector<int> results;
-
-    for (int i = 0; i < rows.size(); i++) {
-      //std::vector<float> vecStore = decodedArray->valueAt<std::vector<float>>(i);
-      //float sumRes = std::accumulate(vecStore.begin(), vecStore.end(), 0.0);
-      //float meanRes = sumRes / vecStore.size();
-
-      auto arrayVector = decodedArray->base()->as<ArrayVector>();
-      auto arrayIndex = decodedArray->index(i);
-      auto size = arrayVector->sizeAt(arrayIndex);
-      auto offset = arrayVector->offsetAt(arrayIndex);
-
-      float sumRes = 0.0;
-      for (int j = 0; j < size; ++j) {
-        float element = arrayVector->elements()->asFlatVector<float>()->valueAt(offset + j);
-        sumRes += element;
-      }
-      float meanRes = sumRes / size;
-
-      if (meanRes >= 0.5) {
-          results.push_back(1);
-      }
-      else {
-          results.push_back(0);
-      }
-    } */
 
     rows.applyToSelected([&](vector_size_t row) {
       if (decodedArray->isNullAt(row)) {
@@ -362,9 +333,6 @@ class IsPopularStore : public MLFunction {
       flatResult->set(row, mean >= 0.4f ? 1 : 0);  // Directly set result
     });
 
-    //VectorMaker maker{context.pool()};
-    //auto localResult = maker.flatVector<int>(results);
-    //context.moveOrCopyResult(localResult, rows, output);
   }
 
   static std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
@@ -409,20 +377,6 @@ class GetMaxIndex : public MLFunction {
     auto decodedArray = vecHolder.get();
     auto arrayVector = decodedArray->base()->as<ArrayVector>();
     auto flatElements = arrayVector->elements()->asFlatVector<float>();
-    //auto inputProbs = decodedArray->base()->as<ArrayVector>();
-    //auto inputProbsValues = inputProbs->elements()->asFlatVector<float>();
-
-    /*std::vector<int> results;
-    for (int i = 0; i < rows.size(); i++) {
-        std::vector<float> inputProbs = decodedArray->valueAt<std::vector<float>>(i);
-        auto max_iter = std::max_element(inputProbs.begin(), inputProbs.end());
-        int index_of_max = std::distance(inputProbs.begin(), max_iter);
-        results.push_back(index_of_max);
-    }
-
-    VectorMaker maker{context.pool()};
-    auto localResult = maker.flatVector<int>(results);
-    context.moveOrCopyResult(localResult, rows, output);*/
 
     rows.applyToSelected([&](vector_size_t row) {
       if (decodedArray->isNullAt(row)) {
@@ -575,17 +529,6 @@ void TripTypeDetectionTest::registerNNFunctions(int numCols) {
   std::vector<std::vector<float>> w11 = loadHDF5Array("resources/model/trip_type_classify.h5", "w11", 0);
   std::vector<std::vector<float>> w12 = loadHDF5Array("resources/model/trip_type_classify.h5", "w12", 0);
 
-  /*std::vector<std::vector<float>> b11;
-  int n_row = b1.size();
-  int n_col = b1[0].size();
-  for (int i = 0; i < n_row; i++) {
-      std::vector<float> temp;
-      for (int j = 0; j < n_col; j++) {
-          temp.push_back(b1[i][j]/2.0);
-      }
-      b11.push_back(temp);
-  }*/
-
   auto itemEmb1Vector = maker.arrayVector<float>(emb1, REAL());
   auto itemNNweight1Vector = maker.arrayVector<float>(w1, REAL());
   auto itemNNweight2Vector = maker.arrayVector<float>(w2, REAL());
@@ -678,12 +621,6 @@ void TripTypeDetectionTest::registerNNFunctions(int numCols) {
           std::move(itemNNweight12Vector->elements()->values()->asMutable<float>()),
           69,
           48));
-
-  /*exec::registerVectorFunction(
-      "mat_vector_add_11",
-      MatrixVectorAddition::signatures(),
-      std::make_unique<MatrixVectorAddition>(
-          std::move(itemNNBias11Vector->elements()->values()->asMutable<float>()), 32));*/
 
   exec::registerVectorFunction(
           "vector_addition",
@@ -1019,9 +956,9 @@ void TripTypeDetectionTest::testingWithRealData(int numDataSplits, int dataBatch
                       
      std::string path = dataFile->path;
 
-     RowVectorPtr orderRowVector = getOrderData("resources/data/500_mb/order.csv");
+     RowVectorPtr orderRowVector = getOrderData("resources/data/order.csv");
      std::cout << "orderRowVector data generated" << std::endl;
-     RowVectorPtr storeRowVector = getStoreData("resources/data/500_mb/store_dept.csv");
+     RowVectorPtr storeRowVector = getStoreData("resources/data/store_dept.csv");
      std::cout << "storeRowVector data generated" << std::endl;
 
      int totalRowsOrder = orderRowVector->size();

@@ -764,7 +764,7 @@ void FraudDetectionTest::registerFunctions(std::string modelFilePath, int numCol
             std::make_unique<GetBinaryClass>());
   std::cout << "Completed registering function for is_anomalous" << std::endl;
 
-  std::string xgboost_fraud_transaction_path = "resources/model/fraud_xgboost_trans_5_32";
+  std::string xgboost_fraud_transaction_path = "resources/model/fraud_xgboost_trans_5_1600";
     exec::registerVectorFunction(
           "xgboost_fraud_transaction",
           TreePrediction::signatures(),
@@ -1363,7 +1363,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      std::vector<std::string> pathVectors;
 
-  string forestFolderPath = "resources/model/fraud_xgboost_trans_5_32";
+  string forestFolderPath = "resources/model/fraud_xgboost_trans_5_1600";
 
   Forest::vectorizeForestFolder(forestFolderPath, pathVectors);
 
@@ -1434,7 +1434,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
      auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
 
-     /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+     auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                          .values(batchesTransaction)
                          //.localPartition({"t_sender"})
                          .project({"transaction_id", "t_sender", "t_amount", "date_to_timestamp(t_time) as t_timestamp"})
@@ -1470,7 +1470,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          .project({"transaction_id", "get_binary_class(softmax(mat_vector_add_3(mat_mul_3(relu(mat_vector_add_2(mat_mul_2(relu(vector_addition(dnn_part11, dnn_part12))))))))) AS fraud_type"})
                          //.filter("get_binary_class(fraudulent_probs) = 1")
                          //.project({"transaction_id", "get_binary_class(fraudulent_probs)"})
-                         .planNode();*/
+                         .planNode();
 
 
      /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
@@ -1561,7 +1561,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
 
 
 
-     auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
+     /*auto myPlan1 = exec::test::PlanBuilder(planNodeIdGenerator, pool_.get())
                         .values({customerRowVector})
                         .localPartition({"c_customer_sk"})
                         .project({"c_customer_sk", "c_address_num", "c_cust_flag", "c_birth_day", "c_birth_month", "c_birth_year", "c_birth_country"})
@@ -1613,7 +1613,7 @@ void FraudDetectionTest::testingWithRealData(int numDataSplits, int dataBatchSiz
                          //.filter("is_working_day(t_timestamp) = 1")
                          //.filter("get_binary_class(fraudulent_probs) = 1")
                          //.project({"transaction_id", "get_binary_class(fraudulent_probs)"})
-                         .planNode();
+                         .planNode();*/
 
 
 

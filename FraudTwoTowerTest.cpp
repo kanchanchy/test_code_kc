@@ -1445,7 +1445,7 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
                              .localPartition({"r_user_id"})
                              .project({"r_user_id", "r_rating"})
                              .singleAggregation({"r_user_id"}, {"avg(r_rating) as avg_customer_rating"})
-                             //.filter("avg_customer_rating >= 4.0")
+                             .filter("avg_customer_rating >= 4.0")
                              .planNode(),
                              "",
                              {"c_customer_sk", "c_address_num", "age", "c_birth_country", "c_cust_flag", "avg_customer_rating"}
@@ -1457,7 +1457,7 @@ void FraudTwoTowerTest::testingWithRealData(int numDataSplits, int dataBatchSize
                              {"c_customer_sk", "avg_customer_rating", "customer_encoding", "p_product_id", "product_encoding"}
                       )
                       .project({"c_customer_sk", "p_product_id", "avg_customer_rating", "vector_addition(customer_encoding, product_encoding) as final_encoding"})
-                      .filter("avg_customer_rating >= 4.0")
+                      //.filter("avg_customer_rating >= 4.0")
                       //.project({"c_customer_sk", "p_product_id", "customer_encoding", "product_encoding"})
                       .planNode();
 
